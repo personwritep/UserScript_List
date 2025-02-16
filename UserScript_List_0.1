@@ -1,0 +1,68 @@
+// ==UserScript==
+// @name        UserScript List
+// @namespace        http://tampermonkey.net/
+// @version        0.1
+// @description        Tampermonkey の登録スクリプトのリストを表示
+// @author        Personwritep
+// @match        file:///D:/My%20Desktop/data.html
+// @icon        https://www.google.com/s2/favicons?sz=64&domain=undefined.
+// @grant        none
+// ==/UserScript==
+
+
+let data=document.querySelector('.data').textContent;
+let all=data.split('"name":"');
+let tmp=all.shift();
+
+let get=[];
+
+for(let k=0; k<all.length; k++){
+    let name=all[k].substring(0, all[k].indexOf('","options":'));
+    get.push(name); }
+
+
+let panel=
+    '<div id="panel_USL">'+
+    '<div class="us_list">'+
+    '<ul></ul>'+
+    '</div>'+
+
+    '<style>'+
+    'body { font-family: "Roboto", "LocalRoboto", "Helvetica Neue", "Helvetica", "sans-serif"; '+
+    'font-size: 85%; } '+
+    '#panel_USL { position: absolute; top: 0; left: 0; '+
+    'display: flex; flex-direction: column; width: 500px; padding: 2px 15px; '+
+    'color: #666; background: #e0f0fd; '+
+    'border: 1px solid #ccc; border-radius: 2px; box-shadow: 0 0 0 100vw #00000080; } '+
+    '#panel_USL .us_list { margin: 0; height: calc(100vh - 30px); overflow-y: scroll; '+
+    'color: #000; background: #fff; } '+
+    '#panel_USL .us_list ul { padding: 0; margin: 0; } '+
+    '#panel_USL .us_list li { line-height: 21px; height: 23.2px; '+
+    'padding: 12px 12px 8px; border-bottom: 1px solid #ccc; list-style: none; } '+
+    '#panel_USL .dn { display: inline-block; width: 40px; text-align: left; } '+
+    '#panel_USL .d0 { display: inline-block; width: 400px; } '+
+    '</style>'+
+    '</div>';
+
+if(!document.querySelector('#panel_USL')){
+    document.body.insertAdjacentHTML('beforeend', panel); }
+
+
+disp_list();
+
+function disp_list(){
+    let ul=document.querySelector('#panel_USL .us_list ul');
+    let li='';
+    if(ul){
+        for(let k=0; k<get.length; k++){
+            li+=
+                '<li>'+
+                '<span class="dn">'+ (k+1) +'</span>'+
+                '<span class="d0">'+ get[k] +'</span>';
+            li+='</li>';
+        }
+
+        ul.insertAdjacentHTML('beforeend', li );
+
+    }
+} // disp_list()
