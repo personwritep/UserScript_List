@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        UserScript List
 // @namespace        http://tampermonkey.net/
-// @version        0.3
+// @version        0.4
 // @description        Tampermonkey の登録スクリプトのリストを表示
 // @author        Personwritep
 // @match        https://*/*
@@ -30,32 +30,31 @@ file_read(1);
 function display(){
     let panel=
         '<div id="panel_USL">'+
-
         '<div class="wap">'+
         '<div class="file_reader_USL file0">'+
         '<input class="button2" type="file">'+
-        '<input class="button4" type="submit" value="　">'+
+        '<input class="button3" type="submit" value="C" '+
+        'title="左右のリストを比較\n青: 一致　黄色: バージョン違い　白: 一致なし">'+
         '</div>'+
         '<div class="us_list l0">'+
         '<ul></ul>'+
         '</div></div>'+
-
         '<div class="wap">'+
         '<div class="file_reader_USL file1">'+
         '<input class="button2" type="file">'+
-        '<input class="button3" type="submit" value="✖">'+
+        '<input class="button4" type="submit" value="✖">'+
         '</div>'+
         '<div class="us_list l1">'+
         '<ul></ul>'+
         '</div></div>'+
 
-
         '<style>'+
-        'body { font-family: "Roboto", "LocalRoboto", "Helvetica Neue", "Helvetica", "sans-serif"; '+
-        'font-size: 85%; overflow: hidden; } '+
+        'html { overflow: hidden; } '+
+        '#panel_USL { font-size: 85%; overflow: hidden; '+
+        'font-family: "Roboto", "LocalRoboto", "Helvetica Neue", "Helvetica", "sans-serif"; } '+
         '#panel_USL { position: absolute; top: 0; left: 0; z-index: calc(infinity); '+
         'display: flex; flex-direction: row; justify-content: space-between; width: auto; '+
-        'padding: 2px 12px; color: #666; background: #73a9d4; '+
+        'padding: 2px 15px; color: #666; background: #73a9d4; '+
         'border: 1px solid #aaa; border-radius: 2px; box-shadow: 0 0 0 100vw #00000080; } '+
         '.wap { position: relative; height: calc(100vh - 10px); padding: 0 3px; } '+
 
@@ -65,12 +64,11 @@ function display(){
         '#panel_USL .us_list li { line-height: 21px; height: 23.2px; box-sizing: content-box; '+
         'padding: 12px 0 8px 4px; border-bottom: 1px solid #ccc; list-style: none; '+
         'scroll-snap-align: start; } '+
-        '#panel_USL .us_list li >* { display: inline-block; background: #fff; } '+
+        '#panel_USL .us_list li >* { display: inline-block; } '+
         '#panel_USL .dn { width: 55px; text-align: center; } '+
         '#panel_USL .de { width: 45px; text-align: left; } '+
-        '#panel_USL .d0 { width: 250px; white-space: nowrap; } '+
-        '#panel_USL .d0:hover { width: auto; } '+
-        '#panel_USL .d1 { width: 70px; padding: 0 15px; } '+
+        '#panel_USL .d0 { width: 300px; white-space: nowrap; } '+
+        '#panel_USL .d1 { width: 80px; padding: 0 6px; margin: 0 -20px 2px 15px; } '+
         '.far { height: 17px; vertical-align: -3px; } '+
 
         '.file_reader_USL { position: relative; z-index: 1; display: flex; align-items: center; '+
@@ -104,14 +102,18 @@ function file_read(n){
         file_reader.onload=function(){
             let data_in=JSON.parse(file_reader.result);
             data=JSON.stringify(data_in); // 読込み
-
-            sort_data(n, data); } // データの表示
-
+            extract_data(n, data); } // データの表示
     });
 
 
     let button3=document.querySelector('.button3');
     button3.onclick=function(){
+        if(list0.length!=0 && list1.length!=0){
+            compare(); }}
+
+
+    let button4=document.querySelector('.button4');
+    button4.onclick=function(){
         let list_panel=document.querySelector('#panel_USL');
         if(list_panel){
             list_panel.remove(); }}
@@ -121,7 +123,7 @@ function file_read(n){
 
 
 
-function sort_data(n, dat){
+function extract_data(n, dat){
     if(n==0){
         list0=[]; } // 初期化
     else if(n==1){
@@ -137,19 +139,22 @@ function sort_data(n, dat){
     for(let k=0; k<all.length; k++){
         let name=all[k].substring(0, all[k].indexOf('","options":'));
 
-        let enabled=all[k].substring(all[k].indexOf('"enabled":') +10, all[k].indexOf('"enabled":') +14);
+        let enabled=
+            all[k].substring(all[k].indexOf('"enabled":') +10, all[k].indexOf('"enabled":') +14);
 
         let position=all[k].substring(all[k].indexOf('"position":') +11);
         position=position.substring(0, position.indexOf(',"'));
 
-        let source=all[k].substring(all[k].indexOf('"source":"')+10, all[k].indexOf('"source":"')+300);
+        let source=
+            all[k].substring(all[k].indexOf('"source":"')+10, all[k].indexOf('"source":"')+300);
 
         let decoded;
         let version;
         if(source){
             try {
                 decoded=atob(source);
-                let decoded_array=new Uint8Array(Array.prototype.map.call(decoded, c => c.charCodeAt()));
+                let decoded_array=
+                    new Uint8Array(Array.prototype.map.call(decoded, c => c.charCodeAt()));
                 decoded=new TextDecoder().decode(decoded_array);
 
                 let ver=decoded.substring(decoded.indexOf('// @version')+12);
@@ -171,7 +176,7 @@ function sort_data(n, dat){
         if(list1.length>0){
             disp_list(1); }}
 
-} // sort_data()
+} // extract_data()
 
 
 
@@ -226,3 +231,95 @@ function disp_list(n){
         ul.insertAdjacentHTML('beforeend', li ); }
 
 } // disp_list()
+
+
+
+
+function compare(){
+    mark_reset();
+
+
+    let vv0=[];
+    for(let k=0; k<list1.length; k++){
+        let name=list1[k][2];
+        let result0_nvv=list0.filter( function(elem){
+            return elem[2]==name; }); // name一致
+
+        for(let r=0; r<result0_nvv.length; r++){
+            vv0.push(result0_nvv[r][0]); }} // name一致 の position 総計
+
+    let new_vv0=Array.from(new Set(vv0)); // 重複を整理
+
+
+    let v0=[];
+    for(let k=0; k<list1.length; k++){
+        let name=list1[k][2];
+        let version=list1[k][3];
+        let result0_nv=list0.filter( function(elem){
+            return elem[2]==name && elem[3]==version; }); // name・version一致
+
+        for(let r=0; r<result0_nv.length; r++){
+            v0.push(result0_nv[r][0]); }} // name・version一致 の position 総計
+
+    let new_v0=Array.from(new Set(v0)); // 重複を整理　name・version一致 の position 配列
+    new_vv0=new_vv0.filter(i=>new_v0.indexOf(i)==-1); // version違いの position 配列
+
+    mark0(new_v0, '#c0dfed');
+    mark0(new_vv0, '#fff9c4');
+
+
+
+    let vv1=[];
+    for(let k=0; k<list0.length; k++){
+        let name=list0[k][2];
+        let result1_nvv=list1.filter( function(elem){
+            return elem[2]==name; }); // name一致
+
+        for(let r=0; r<result1_nvv.length; r++){
+            vv1.push(result1_nvv[r][0]); }} // name一致 の position 総計
+
+    let new_vv1=Array.from(new Set(vv1)); // 重複を整理
+
+
+    let v1=[];
+    for(let k=0; k<list0.length; k++){
+        let name=list0[k][2];
+        let version=list0[k][3];
+        let result1_nv=list1.filter( function(elem){
+            return elem[2]==name && elem[3]==version; }); // name・version一致
+
+        for(let r=0; r<result1_nv.length; r++){
+            v1.push(result1_nv[r][0]); }} // name・version一致 の position 総計
+
+    let new_v1=Array.from(new Set(v1)); // 重複を整理　name・version一致 の position 配列
+    new_vv1=new_vv1.filter(i=>new_v1.indexOf(i)==-1); // version違いの position 配列
+
+    mark1(new_v1, '#c0dfed');
+    mark1(new_vv1, '#fff9c4');
+
+} // compare()
+
+
+function mark_reset(){
+    let items0=document.querySelectorAll('.us_list.l0 li');
+    for(let k=0; k<items0.length; k++){
+        items0[k].style.background='#fff'; }
+
+    let items1=document.querySelectorAll('.us_list.l1 li');
+    for(let k=0; k<items1.length; k++){
+        items1[k].style.background='#fff'; }}
+
+
+function mark0(new_list, color){
+    let items0=document.querySelectorAll('.us_list.l0 li');
+    for(let k=0; k<new_list.length; k++){
+        let id=new_list[k];
+        items0[id-1].style.background=color; }}
+
+
+function mark1(new_list, color){
+    let items1=document.querySelectorAll('.us_list.l1 li');
+    for(let k=0; k<new_list.length; k++){
+        let id=new_list[k];
+        items1[id-1].style.background=color; }}
+
