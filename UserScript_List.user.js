@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        UserScript List
 // @namespace        http://tampermonkey.net/
-// @version        0.2
+// @version        0.3
 // @description        Tampermonkey の登録スクリプトのリストを表示
 // @author        Personwritep
 // @match        https://*/*
@@ -14,11 +14,15 @@
 
 
 let data; // バックアップデータの中身
-let get=[]; // 抽出用の配列
+let get=[]; // リストディスプレイ用の配列
+let list0=[]; // リスト0用のデータ保持配列
+let list1=[]; // リスト1用のデータ保持配列
+
 
 display();
 
-file_read();
+file_read(0);
+file_read(1);
 
 
 
@@ -26,22 +30,41 @@ file_read();
 function display(){
     let panel=
         '<div id="panel_USL">'+
-        '<div class="us_list">'+
-        '<ul></ul>'+
+
+        '<div class="wap">'+
+        '<div class="file_reader_USL file0">'+
+        '<input class="button2" type="file">'+
+        '<input class="button4" type="submit" value="　">'+
         '</div>'+
+        '<div class="us_list l0">'+
+        '<ul></ul>'+
+        '</div></div>'+
+
+        '<div class="wap">'+
+        '<div class="file_reader_USL file1">'+
+        '<input class="button2" type="file">'+
+        '<input class="button3" type="submit" value="✖">'+
+        '</div>'+
+        '<div class="us_list l1">'+
+        '<ul></ul>'+
+        '</div></div>'+
+
 
         '<style>'+
         'body { font-family: "Roboto", "LocalRoboto", "Helvetica Neue", "Helvetica", "sans-serif"; '+
         'font-size: 85%; overflow: hidden; } '+
         '#panel_USL { position: absolute; top: 0; left: 0; z-index: calc(infinity); '+
-        'display: flex; flex-direction: column; width: 530px; padding: 2px 15px; color: #666; '+
-        'background: #e0f0fd; border: 1px solid #aaa; border-radius: 2px; '+
-        'box-shadow: 0 0 0 100vw #00000080; } '+
-        '#panel_USL .us_list { margin: 0; height: calc(100vh - 10px); overflow-y: scroll; '+
-        'color: #000; background: #fff; } '+
+        'display: flex; flex-direction: row; justify-content: space-between; width: auto; '+
+        'padding: 2px 12px; color: #666; background: #73a9d4; '+
+        'border: 1px solid #aaa; border-radius: 2px; box-shadow: 0 0 0 100vw #00000080; } '+
+        '.wap { position: relative; height: calc(100vh - 10px); padding: 0 3px; } '+
+
+        '#panel_USL .us_list { width: 530px; margin: 0; height: calc(100% - 45px); '+
+        'color: #000; background: #fff; overflow-y: scroll; scroll-snap-type: y mandatory; } '+
         '#panel_USL .us_list ul { padding: 0; margin: 0; } '+
         '#panel_USL .us_list li { line-height: 21px; height: 23.2px; box-sizing: content-box; '+
-        'padding: 12px 0 8px 4px; border-bottom: 1px solid #ccc; list-style: none; } '+
+        'padding: 12px 0 8px 4px; border-bottom: 1px solid #ccc; list-style: none; '+
+        'scroll-snap-align: start; } '+
         '#panel_USL .us_list li >* { display: inline-block; background: #fff; } '+
         '#panel_USL .dn { width: 55px; text-align: center; } '+
         '#panel_USL .de { width: 45px; text-align: left; } '+
@@ -49,6 +72,13 @@ function display(){
         '#panel_USL .d0:hover { width: auto; } '+
         '#panel_USL .d1 { width: 70px; padding: 0 15px; } '+
         '.far { height: 17px; vertical-align: -3px; } '+
+
+        '.file_reader_USL { position: relative; z-index: 1; display: flex; align-items: center; '+
+        'padding: 0 15px; height: 40px; margin-bottom: 3px; color: #000; background: #fff; } '+
+        '#panel_USL .button2 { width: -webkit-fill-available; } '+
+        '#panel_USL .button3, #panel_USL .button4 { position: absolute; top: 7px; right: 15px; '+
+        'width: 26px; height: 26px; border: 1px solid #aaa; border-radius: 2px; '+
+        'box-shadow: -12px 0 0 #fff; } '+
         '</style>'+
         '</div>';
 
@@ -60,30 +90,8 @@ function display(){
 
 
 
-function file_read(){
-    let css=
-        '#file_reader_USL { position: absolute; top: 60px; right: 40px; z-index: calc(infinity); '+
-        'width: 480px; height: 40px; border: 1px solid #aaa; border-radius: 4px; color: #000; '+
-        'background: #fff; } '+
-        '#button2 { margin: 7px 60px 0 15px; width: -webkit-fill-available; } '+
-        '#button3 { position: absolute; top: 7px; right: 15px; width: 26px; height: 26px; '+
-        'border: 1px solid #aaa; border-radius: 2px; } '+
-        '@media screen and (max-width: 800px){ '+
-        '#file_reader_USL { width: 0; border: none; } '+
-        '#button2 { display: none; }}';
-
-
-    let insert_div=
-        '<div id="file_reader_USL">'+
-        '<input id="button2" type="file">'+
-        '<input id="button3" type="submit" value="✖">'+
-        '<style>'+ css +'</style>'+
-        '</div>';
-    if(!document.querySelector('#file_reader_USL')){
-        document.body.insertAdjacentHTML('beforeend', insert_div); }
-
-
-    let button2=document.querySelector('#button2');
+function file_read(n){
+    let button2=document.querySelector('.file'+ n +'>.button2');
     button2.addEventListener("change" , function(){
         if(!(button2.value)) return; // ファイルが選択されない場合
         let file_list=button2.files;
@@ -97,16 +105,15 @@ function file_read(){
             let data_in=JSON.parse(file_reader.result);
             data=JSON.stringify(data_in); // 読込み
 
-            sort_data(data); } // データの表示
+            sort_data(n, data); } // データの表示
 
     });
 
-    let button3=document.querySelector('#button3');
+
+    let button3=document.querySelector('.button3');
     button3.onclick=function(){
-        let file_panel=document.querySelector('#file_reader_USL');
         let list_panel=document.querySelector('#panel_USL');
-        if(file_panel && list_panel){
-            file_panel.remove();
+        if(list_panel){
             list_panel.remove(); }}
 
 } //  file_read()
@@ -114,8 +121,13 @@ function file_read(){
 
 
 
-function sort_data(dat){
-    get=[]; // 初期化
+function sort_data(n, dat){
+    if(n==0){
+        list0=[]; } // 初期化
+    else if(n==1){
+        list1=[]; } // 初期化
+
+
     let all=dat.split('"name":"');
     let tmp=all.shift();
     for(let k=0; k<all.length; k++){
@@ -146,18 +158,25 @@ function sort_data(dat){
             catch {
                 version=''; }}
 
-        get.push([position, enabled, name, version]); }
+        if(n==0){
+            list0.push([position, enabled, name, version]); }
+        else if(n==1){
+            list1.push([position, enabled, name, version]); }}
 
 
-    if(get.length>0){
-        disp_list(); }
+    if(n==0){
+        if(list0.length>0){
+            disp_list(0); }}
+    else if(n==1){
+        if(list1.length>0){
+            disp_list(1); }}
 
 } // sort_data()
 
 
 
 
-function disp_list(){
+function disp_list(n){
     let toggle_G=
         '<svg class="far" viewBox="0 0 240 168">'+
         '<path style="fill: gray;" d="M67 7C55 9 43 14 33 22C3 48 3 96 '+
@@ -178,7 +197,15 @@ function disp_list(){
         'C214 102 203 45 161 36C155 35 149 35 143 35z"></path></svg>';
 
 
-    let ul=document.querySelector('#panel_USL .us_list ul');
+    get=[]; // 初期化
+    if(n==0){
+        for(let k=0; k<list0.length; k++){
+            get.push([list0[k][0], list0[k][1], list0[k][2], list0[k][3]]); }}
+    else if(n==1){
+        for(let k=0; k<list1.length; k++){
+            get.push([list1[k][0], list1[k][1], list1[k][2], list1[k][3]]); }}
+
+    let ul=document.querySelector('#panel_USL .us_list.l'+ n +' ul');
     let li='';
     if(ul){
         ul.innerHTML=''; // 書込みをクリア
