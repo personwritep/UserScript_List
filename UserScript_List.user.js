@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        UserScript List
 // @namespace        http://tampermonkey.net/
-// @version        0.4
+// @version        0.5
 // @description        Tampermonkey の登録スクリプトのリストを表示
 // @author        Personwritep
 // @match        https://*/*
@@ -52,24 +52,11 @@ function display(){
         'html { overflow: hidden; } '+
         '#panel_USL { font-size: 85%; overflow: hidden; '+
         'font-family: "Roboto", "LocalRoboto", "Helvetica Neue", "Helvetica", "sans-serif"; } '+
-        '#panel_USL { position: absolute; top: 0; left: 0; z-index: calc(infinity); '+
+        '#panel_USL { position: fixed; top: 0; left: 0; z-index: calc(infinity); '+
         'display: flex; flex-direction: row; justify-content: space-between; width: auto; '+
         'padding: 2px 15px; color: #666; background: #73a9d4; '+
         'border: 1px solid #aaa; border-radius: 2px; box-shadow: 0 0 0 100vw #00000080; } '+
         '.wap { position: relative; height: calc(100vh - 10px); padding: 0 3px; } '+
-
-        '#panel_USL .us_list { width: 530px; margin: 0; height: calc(100% - 45px); '+
-        'color: #000; background: #fff; overflow-y: scroll; scroll-snap-type: y mandatory; } '+
-        '#panel_USL .us_list ul { padding: 0; margin: 0; } '+
-        '#panel_USL .us_list li { line-height: 21px; height: 23.2px; box-sizing: content-box; '+
-        'padding: 12px 0 8px 4px; border-bottom: 1px solid #ccc; list-style: none; '+
-        'scroll-snap-align: start; } '+
-        '#panel_USL .us_list li >* { display: inline-block; } '+
-        '#panel_USL .dn { width: 55px; text-align: center; } '+
-        '#panel_USL .de { width: 45px; text-align: left; } '+
-        '#panel_USL .d0 { width: 300px; white-space: nowrap; } '+
-        '#panel_USL .d1 { width: 80px; padding: 0 6px; margin: 0 -20px 2px 15px; } '+
-        '.far { height: 17px; vertical-align: -3px; } '+
 
         '.file_reader_USL { position: relative; z-index: 1; display: flex; align-items: center; '+
         'padding: 0 15px; height: 40px; margin-bottom: 3px; color: #000; background: #fff; } '+
@@ -77,11 +64,25 @@ function display(){
         '#panel_USL .button3, #panel_USL .button4 { position: absolute; top: 7px; right: 15px; '+
         'width: 26px; height: 26px; border: 1px solid #aaa; border-radius: 2px; '+
         'box-shadow: -12px 0 0 #fff; } '+
+
+        '#panel_USL .us_list { width: 530px; margin: 0; height: calc(100% - 45px); '+
+        'color: #000; background: #fff; overflow-y: scroll; } '+
+        '#panel_USL .us_list ul { padding: 0; margin: 0; } '+
+        '#panel_USL .us_list li { line-height: 21px; height: 23.2px; box-sizing: content-box; '+
+        'padding: 12px 0 8px 4px; border-bottom: 1px solid #ccc; list-style: none; } '+
+        '#panel_USL .us_list li >* { display: inline-block; } '+
+        '#panel_USL .dp { width: 55px; text-align: center; } '+
+        '#panel_USL .de { width: 45px; text-align: left; } '+
+        '#panel_USL .dn { width: 300px; white-space: nowrap; } '+
+        '#panel_USL .dv { width: 80px; padding: 0 6px; margin: 0 -20px 2px 15px; } '+
+        '.far { height: 17px; vertical-align: -3px; } '+
         '</style>'+
         '</div>';
 
     if(!document.querySelector('#panel_USL')){
         document.body.insertAdjacentHTML('beforeend', panel); }
+
+    snap_scroll(1); // スナップスクロールの適用
 
 } // display()
 
@@ -168,13 +169,13 @@ function extract_data(n, dat){
         else if(n==1){
             list1.push([position, enabled, name, version]); }}
 
-
     if(n==0){
         if(list0.length>0){
             disp_list(0); }}
     else if(n==1){
         if(list1.length>0){
-            disp_list(1); }}
+            disp_list(1);
+            catch_line(); }}
 
 } // extract_data()
 
@@ -217,7 +218,7 @@ function disp_list(n){
 
         for(let k=0; k<get.length; k++){
             li+=
-                '<li><span class="dn">'+ get[k][0] +'</span>';
+                '<li><span class="dp">'+ get[k][0] +'</span>';
 
             if(get[k][1]=='true'){
                 li+='<span class="de">'+ toggle_R +'</span>'; }
@@ -225,12 +226,31 @@ function disp_list(n){
                 li+='<span class="de">'+ toggle_G +'</span>'; }
 
             li+=
-                '<span class="d0">'+ get[k][2] +'</span>'+
-                '<span class="d1">'+ get[k][3] +'</span></li>'; }
+                '<span class="dn">'+ get[k][2] +'</span>'+
+                '<span class="dv">'+ get[k][3] +'</span></li>'; }
 
         ul.insertAdjacentHTML('beforeend', li ); }
 
+    last(n); // リスト末尾のmargin最適化
+
 } // disp_list()
+
+
+window.addEventListener('resize', function(){
+    if(list0.length>0){
+        last(0); }
+
+    if(list1.length>0){
+        last(1); }});
+
+
+function last(n){
+    let list=document.querySelector('.us_list.l'+n);
+    let list_li=document.querySelectorAll('.us_list.l'+ n +' li');
+    if(list && list_li){
+        let height_li=list_li[0].getBoundingClientRect().height;
+        let margin_last=(list.getBoundingClientRect().height)%height_li;
+        list_li[list_li.length-1].style.marginBottom=margin_last +'px'; }}
 
 
 
@@ -322,4 +342,77 @@ function mark1(new_list, color){
     for(let k=0; k<new_list.length; k++){
         let id=new_list[k];
         items1[id-1].style.background=color; }}
+
+
+
+
+function catch_line(){
+    let items1=document.querySelectorAll('.us_list.l1 li');
+    for(let k=0; k<items1.length; k++){
+        items1[k].onclick=function(){
+            catch_up(items1[k]); }}
+
+
+    function catch_up(item){
+        let s_count=0; // スクロール動作のカウント
+
+        item.style.boxShadow='inset 15px 0 0 0 red';
+        setTimeout(()=>{
+            item.style.boxShadow='';
+        }, 800);
+
+        let name_span1=item.querySelector('.dn');
+        if(name_span1){
+            let name=name_span1.textContent;
+
+            let scroll_box=document.querySelector('.us_list.l0');
+            let items0=document.querySelectorAll('.us_list.l0 li');
+            for(let k=0; k<items0.length; k++){
+                let name_span0=items0[k].querySelector('.dn');
+                if(name_span0){
+                    if(name==name_span0.textContent){
+                        s_count+=1; // 最初のヒットのみスクロール
+                        seek_act(items0[k], item, s_count);
+                    }}}
+
+
+            function seek_act(elem0, elem1, count){
+                let reach=
+                    elem0.getBoundingClientRect().top - elem1.getBoundingClientRect().top;
+                snap_scroll(0);
+                setTimeout(()=>{
+                    if(count==1){
+                        scroll_box.scrollBy(0, reach); // 最初のヒットのみスクロール
+                    }
+                    elem0.style.boxShadow='inset -15px 0 0 0 red';
+                }, 40);
+                setTimeout(()=>{
+                    elem0.style.boxShadow='';
+                    snap_scroll(1);
+                }, 800); } // seek_act()
+
+        }} // catch_up()
+
+} // catch_line()
+
+
+
+
+function snap_scroll(n){
+    let s_style=
+        '<style class="snap_style">'+
+        '#panel_USL .us_list { scroll-snap-type: y mandatory; } '+
+        '#panel_USL .us_list li { scroll-snap-align: start; }</style>';
+
+    let panel_USL=document.querySelector('#panel_USL');
+    if(panel_USL){
+        if(n==1){
+            panel_USL.insertAdjacentHTML('beforeend', s_style); }
+        else{
+            if(panel_USL.querySelector('.snap_style')){
+                panel_USL.querySelector('.snap_style').remove(); }}}
+
+} // snap_scroll()
+
+
 
