@@ -1,0 +1,419 @@
+// ==UserScript==
+// @name        UserScript List
+// @namespace        http://tampermonkey.net/
+// @version        0.5
+// @description        Tampermonkey の登録スクリプトのリストを表示
+// @author        Personwritep
+// @match        https://*/*
+// @icon        https://www.google.com/s2/favicons?sz=64&domain=undefined.
+// @noframes
+// @grant        none
+// @updateURL        https://github.com/personwritep/UserScript_List/raw/main/UserScript_List.user.js
+// @downloadURL        https://github.com/personwritep/UserScript_List/raw/main/UserScript_List.user.js
+// ==/UserScript==
+
+
+let data; // バックアップデータの中身
+let get=[]; // リストディスプレイ用の配列
+let list0=[]; // リスト0用のデータ保持配列
+let list1=[]; // リスト1用のデータ保持配列
+
+
+display();
+
+file_read(0);
+file_read(1);
+
+
+
+
+function display(){
+    let panel=
+        '<div id="panel_USL">'+
+        '<div class="wap">'+
+        '<div class="file_reader_USL file0">'+
+        '<input class="button2" type="file">'+
+        '<input class="button3" type="submit" value="C" '+
+        'title="左右のリストを比較\n青: 一致　黄色: バージョン違い　白: 一致なし">'+
+        '</div>'+
+        '<div class="us_list l0">'+
+        '<ul></ul>'+
+        '</div></div>'+
+        '<div class="wap">'+
+        '<div class="file_reader_USL file1">'+
+        '<input class="button2" type="file">'+
+        '<input class="button4" type="submit" value="✖">'+
+        '</div>'+
+        '<div class="us_list l1">'+
+        '<ul></ul>'+
+        '</div></div>'+
+
+        '<style>'+
+        'html { overflow: hidden; } '+
+        '#panel_USL { font-size: 85%; overflow: hidden; '+
+        'font-family: "Roboto", "LocalRoboto", "Helvetica Neue", "Helvetica", "sans-serif"; } '+
+        '#panel_USL { position: fixed; top: 0; left: 0; z-index: calc(infinity); '+
+        'display: flex; flex-direction: row; justify-content: space-between; width: auto; '+
+        'padding: 2px 15px; color: #666; background: #73a9d4; '+
+        'border: 1px solid #aaa; border-radius: 2px; box-shadow: 0 0 0 100vw #00000080; } '+
+        '.wap { position: relative; height: calc(100vh - 10px); padding: 0 3px; } '+
+
+        '.file_reader_USL { position: relative; z-index: 1; display: flex; align-items: center; '+
+        'padding: 0 15px; height: 40px; margin-bottom: 3px; color: #000; background: #fff; } '+
+        '#panel_USL .button2 { width: -webkit-fill-available; } '+
+        '#panel_USL .button3, #panel_USL .button4 { position: absolute; top: 7px; right: 15px; '+
+        'width: 26px; height: 26px; border: 1px solid #aaa; border-radius: 2px; '+
+        'box-shadow: -12px 0 0 #fff; } '+
+
+        '#panel_USL .us_list { width: 530px; margin: 0; height: calc(100% - 45px); '+
+        'color: #000; background: #fff; overflow-y: scroll; } '+
+        '#panel_USL .us_list ul { padding: 0; margin: 0; } '+
+        '#panel_USL .us_list li { line-height: 21px; height: 23.2px; box-sizing: content-box; '+
+        'padding: 12px 0 8px 4px; border-bottom: 1px solid #ccc; list-style: none; } '+
+        '#panel_USL .us_list li >* { display: inline-block; } '+
+        '#panel_USL .dp { width: 55px; text-align: center; } '+
+        '#panel_USL .de { width: 45px; text-align: left; } '+
+        '#panel_USL .dn { width: 300px; white-space: nowrap; } '+
+        '#panel_USL .dv { width: 80px; padding: 0 6px; margin: 0 -20px 2px 15px; } '+
+        '.far { height: 17px; vertical-align: -3px; } '+
+        '</style>'+
+        '</div>';
+
+    if(!document.querySelector('#panel_USL')){
+        document.body.insertAdjacentHTML('beforeend', panel); }
+
+    snap_scroll(1); // スナップスクロールの適用
+
+} // display()
+
+
+
+
+function file_read(n){
+    let button2=document.querySelector('.file'+ n +'>.button2');
+    button2.addEventListener("change" , function(){
+        if(!(button2.value)) return; // ファイルが選択されない場合
+        let file_list=button2.files;
+        if(!file_list) return; // ファイルリストが選択されない場合
+        let file=file_list[0];
+        if(!file) return; // ファイルが無い場合
+
+        let file_reader=new FileReader();
+        file_reader.readAsText(file);
+        file_reader.onload=function(){
+            let data_in=JSON.parse(file_reader.result);
+            data=JSON.stringify(data_in); // 読込み
+            extract_data(n, data); } // データの表示
+    });
+
+
+    let button3=document.querySelector('.button3');
+    button3.onclick=function(){
+        if(list0.length!=0 && list1.length!=0){
+            compare(); }}
+
+
+    let button4=document.querySelector('.button4');
+    button4.onclick=function(){
+        let list_panel=document.querySelector('#panel_USL');
+        if(list_panel){
+            list_panel.remove(); }}
+
+} //  file_read()
+
+
+
+
+function extract_data(n, dat){
+    if(n==0){
+        list0=[]; } // 初期化
+    else if(n==1){
+        list1=[]; } // 初期化
+
+
+    let all=dat.split('"name":"');
+    let tmp=all.shift();
+    for(let k=0; k<all.length; k++){
+        if(all[k].includes('SaveFrom.net')){
+            all.splice(k, k); }}
+
+    for(let k=0; k<all.length; k++){
+        let name=all[k].substring(0, all[k].indexOf('","options":'));
+
+        let enabled=
+            all[k].substring(all[k].indexOf('"enabled":') +10, all[k].indexOf('"enabled":') +14);
+
+        let position=all[k].substring(all[k].indexOf('"position":') +11);
+        position=position.substring(0, position.indexOf(',"'));
+
+        let source=
+            all[k].substring(all[k].indexOf('"source":"')+10, all[k].indexOf('"source":"')+300);
+
+        let decoded;
+        let version;
+        if(source){
+            try {
+                decoded=atob(source);
+                let decoded_array=
+                    new Uint8Array(Array.prototype.map.call(decoded, c => c.charCodeAt()));
+                decoded=new TextDecoder().decode(decoded_array);
+
+                let ver=decoded.substring(decoded.indexOf('// @version')+12);
+                ver=ver.substring(0, ver.indexOf('// @'));
+                version=ver.trim(); }
+            catch {
+                version=''; }}
+
+        if(n==0){
+            list0.push([position, enabled, name, version]); }
+        else if(n==1){
+            list1.push([position, enabled, name, version]); }}
+
+    if(n==0){
+        if(list0.length>0){
+            disp_list(0); }}
+    else if(n==1){
+        if(list1.length>0){
+            disp_list(1);
+            catch_line(); }}
+
+} // extract_data()
+
+
+
+
+function disp_list(n){
+    let toggle_G=
+        '<svg class="far" viewBox="0 0 240 168">'+
+        '<path style="fill: gray;" d="M67 7C55 9 43 14 33 22C3 48 3 96 '+
+        '32 122C54 142 84 138 112 138C125 138 138 140 151 138C163 136 175 131 1'+
+        '85 123C215 97 215 49 186 23C164 3 134 7 106 7C93 7 80 5 67 7z"></path>'+
+        '<path style="fill: #fff;" d="M70 23C62 25 55 27 48 32C13'+
+        ' 56 24 113 66 122C72 123 78 123 84 123C92 121 99 119 106 114C141 90 13'+
+        '0 33 88 24C82 23 76 23 70 23z"></path></svg>';
+
+    let toggle_R=
+        '<svg class="far" viewBox="0 0 240 168">'+
+        '<path style="fill: red;" d="M76 20C64 22 52 27 42 35C12 61 12'+
+        ' 109 41 135C63 155 93 151 121 151C134 151 147 153 160 151C172 149 184 '+
+        '144 194 136C224 110 224 62 195 36C173 16 143 20 115 20C102 20 89 18 76'+
+        ' 20z"></path>'+
+        '<path style="fill: #fff;" d="M143 35C135 37 128 39 121 4'+
+        '4C86 68 97 125 139 134C145 135 151 135 157 135C165 133 172 131 179 126'+
+        'C214 102 203 45 161 36C155 35 149 35 143 35z"></path></svg>';
+
+
+    get=[]; // 初期化
+    if(n==0){
+        for(let k=0; k<list0.length; k++){
+            get.push([list0[k][0], list0[k][1], list0[k][2], list0[k][3]]); }}
+    else if(n==1){
+        for(let k=0; k<list1.length; k++){
+            get.push([list1[k][0], list1[k][1], list1[k][2], list1[k][3]]); }}
+
+    let ul=document.querySelector('#panel_USL .us_list.l'+ n +' ul');
+    let li='';
+    if(ul){
+        ul.innerHTML=''; // 書込みをクリア
+
+        for(let k=0; k<get.length; k++){
+            li+=
+                '<li><span class="dp">'+ get[k][0] +'</span>';
+
+            if(get[k][1]=='true'){
+                li+='<span class="de">'+ toggle_R +'</span>'; }
+            else{
+                li+='<span class="de">'+ toggle_G +'</span>'; }
+
+            li+=
+                '<span class="dn">'+ get[k][2] +'</span>'+
+                '<span class="dv">'+ get[k][3] +'</span></li>'; }
+
+        ul.insertAdjacentHTML('beforeend', li ); }
+
+    last(n); // リスト末尾のmargin最適化
+
+} // disp_list()
+
+
+window.addEventListener('resize', function(){
+    if(list0.length>0){
+        last(0); }
+
+    if(list1.length>0){
+        last(1); }});
+
+
+function last(n){
+    let list=document.querySelector('.us_list.l'+n);
+    let list_li=document.querySelectorAll('.us_list.l'+ n +' li');
+    if(list && list_li){
+        let height_li=list_li[0].getBoundingClientRect().height;
+        let margin_last=(list.getBoundingClientRect().height)%height_li;
+        list_li[list_li.length-1].style.marginBottom=margin_last +'px'; }}
+
+
+
+
+function compare(){
+    mark_reset();
+
+
+    let vv0=[];
+    for(let k=0; k<list1.length; k++){
+        let name=list1[k][2];
+        let result0_nvv=list0.filter( function(elem){
+            return elem[2]==name; }); // name一致
+
+        for(let r=0; r<result0_nvv.length; r++){
+            vv0.push(result0_nvv[r][0]); }} // name一致 の position 総計
+
+    let new_vv0=Array.from(new Set(vv0)); // 重複を整理
+
+
+    let v0=[];
+    for(let k=0; k<list1.length; k++){
+        let name=list1[k][2];
+        let version=list1[k][3];
+        let result0_nv=list0.filter( function(elem){
+            return elem[2]==name && elem[3]==version; }); // name・version一致
+
+        for(let r=0; r<result0_nv.length; r++){
+            v0.push(result0_nv[r][0]); }} // name・version一致 の position 総計
+
+    let new_v0=Array.from(new Set(v0)); // 重複を整理　name・version一致 の position 配列
+    new_vv0=new_vv0.filter(i=>new_v0.indexOf(i)==-1); // version違いの position 配列
+
+    mark0(new_v0, '#c0dfed');
+    mark0(new_vv0, '#fff9c4');
+
+
+
+    let vv1=[];
+    for(let k=0; k<list0.length; k++){
+        let name=list0[k][2];
+        let result1_nvv=list1.filter( function(elem){
+            return elem[2]==name; }); // name一致
+
+        for(let r=0; r<result1_nvv.length; r++){
+            vv1.push(result1_nvv[r][0]); }} // name一致 の position 総計
+
+    let new_vv1=Array.from(new Set(vv1)); // 重複を整理
+
+
+    let v1=[];
+    for(let k=0; k<list0.length; k++){
+        let name=list0[k][2];
+        let version=list0[k][3];
+        let result1_nv=list1.filter( function(elem){
+            return elem[2]==name && elem[3]==version; }); // name・version一致
+
+        for(let r=0; r<result1_nv.length; r++){
+            v1.push(result1_nv[r][0]); }} // name・version一致 の position 総計
+
+    let new_v1=Array.from(new Set(v1)); // 重複を整理　name・version一致 の position 配列
+    new_vv1=new_vv1.filter(i=>new_v1.indexOf(i)==-1); // version違いの position 配列
+
+    mark1(new_v1, '#c0dfed');
+    mark1(new_vv1, '#fff9c4');
+
+} // compare()
+
+
+function mark_reset(){
+    let items0=document.querySelectorAll('.us_list.l0 li');
+    for(let k=0; k<items0.length; k++){
+        items0[k].style.background='#fff'; }
+
+    let items1=document.querySelectorAll('.us_list.l1 li');
+    for(let k=0; k<items1.length; k++){
+        items1[k].style.background='#fff'; }}
+
+
+function mark0(new_list, color){
+    let items0=document.querySelectorAll('.us_list.l0 li');
+    for(let k=0; k<new_list.length; k++){
+        let id=new_list[k];
+        items0[id-1].style.background=color; }}
+
+
+function mark1(new_list, color){
+    let items1=document.querySelectorAll('.us_list.l1 li');
+    for(let k=0; k<new_list.length; k++){
+        let id=new_list[k];
+        items1[id-1].style.background=color; }}
+
+
+
+
+function catch_line(){
+    let items1=document.querySelectorAll('.us_list.l1 li');
+    for(let k=0; k<items1.length; k++){
+        items1[k].onclick=function(){
+            catch_up(items1[k]); }}
+
+
+    function catch_up(item){
+        let s_count=0; // スクロール動作のカウント
+
+        item.style.boxShadow='inset 15px 0 0 0 red';
+        setTimeout(()=>{
+            item.style.boxShadow='';
+        }, 800);
+
+        let name_span1=item.querySelector('.dn');
+        if(name_span1){
+            let name=name_span1.textContent;
+
+            let scroll_box=document.querySelector('.us_list.l0');
+            let items0=document.querySelectorAll('.us_list.l0 li');
+            for(let k=0; k<items0.length; k++){
+                let name_span0=items0[k].querySelector('.dn');
+                if(name_span0){
+                    if(name==name_span0.textContent){
+                        s_count+=1; // 最初のヒットのみスクロール
+                        seek_act(items0[k], item, s_count);
+                    }}}
+
+
+            function seek_act(elem0, elem1, count){
+                let reach=
+                    elem0.getBoundingClientRect().top - elem1.getBoundingClientRect().top;
+                snap_scroll(0);
+                setTimeout(()=>{
+                    if(count==1){
+                        scroll_box.scrollBy(0, reach); // 最初のヒットのみスクロール
+                    }
+                    elem0.style.boxShadow='inset -15px 0 0 0 red';
+                }, 40);
+                setTimeout(()=>{
+                    elem0.style.boxShadow='';
+                    snap_scroll(1);
+                }, 800); } // seek_act()
+
+        }} // catch_up()
+
+} // catch_line()
+
+
+
+
+function snap_scroll(n){
+    let s_style=
+        '<style class="snap_style">'+
+        '#panel_USL .us_list { scroll-snap-type: y mandatory; } '+
+        '#panel_USL .us_list li { scroll-snap-align: start; }</style>';
+
+    let panel_USL=document.querySelector('#panel_USL');
+    if(panel_USL){
+        if(n==1){
+            panel_USL.insertAdjacentHTML('beforeend', s_style); }
+        else{
+            if(panel_USL.querySelector('.snap_style')){
+                panel_USL.querySelector('.snap_style').remove(); }}}
+
+} // snap_scroll()
+
+
+
+
