@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        UserScript List
 // @namespace        http://tampermonkey.net/
-// @version        0.5
+// @version        0.6
 // @description        Tampermonkey の登録スクリプトのリストを表示
 // @author        Personwritep
 // @match        https://*/*
@@ -17,6 +17,7 @@ let data; // バックアップデータの中身
 let get=[]; // リストディスプレイ用の配列
 let list0=[]; // リスト0用のデータ保持配列
 let list1=[]; // リスト1用のデータ保持配列
+let list_reverce=1; // 配列の降順表示
 
 
 display();
@@ -30,40 +31,57 @@ file_read(1);
 function display(){
     let panel=
         '<div id="panel_USL">'+
+        '<input class="avatar" type="submit" value="▶️">'+
+        '<div class="main_panel">'+
+
         '<div class="wap">'+
         '<div class="file_reader_USL file0">'+
+        '<input class="button1" type="submit" value="File">'+
         '<input class="button2" type="file">'+
+        '<span class="fname"></span>'+
         '<input class="button3" type="submit" value="C" '+
         'title="左右のリストを比較\n青: 一致　黄色: バージョン違い　白: 一致なし">'+
         '</div>'+
         '<div class="us_list l0">'+
         '<ul></ul>'+
         '</div></div>'+
+
         '<div class="wap">'+
         '<div class="file_reader_USL file1">'+
+        '<input class="button1" type="submit" value="File">'+
         '<input class="button2" type="file">'+
-        '<input class="button4" type="submit" value="✖">'+
+        '<span class="fname"></span>'+
+        '<input class="button0" type="submit" value="⚙️">'+
+        '<input class="button4" type="submit" value="◀️">'+
         '</div>'+
         '<div class="us_list l1">'+
         '<ul></ul>'+
         '</div></div>'+
+        '</div>'+
 
         '<style>'+
         'html { overflow: hidden; } '+
         '#panel_USL { font-size: 85%; overflow: hidden; '+
         'font-family: "Roboto", "LocalRoboto", "Helvetica Neue", "Helvetica", "sans-serif"; } '+
         '#panel_USL { position: fixed; top: 0; left: 0; z-index: calc(infinity); '+
-        'display: flex; flex-direction: row; justify-content: space-between; width: auto; '+
-        'padding: 2px 15px; color: #666; background: #73a9d4; '+
+        'color: #666; background: #73a9d4; box-sizing: border-box; '+
         'border: 1px solid #aaa; border-radius: 2px; box-shadow: 0 0 0 100vw #00000080; } '+
+        '#panel_USL .main_panel { '+
+        'display: flex; flex-direction: row; justify-content: space-between; padding: 2px 15px; } '+
         '.wap { position: relative; height: calc(100vh - 10px); padding: 0 3px; } '+
 
         '.file_reader_USL { position: relative; z-index: 1; display: flex; align-items: center; '+
         'padding: 0 15px; height: 40px; margin-bottom: 3px; color: #000; background: #fff; } '+
-        '#panel_USL .button2 { width: -webkit-fill-available; } '+
-        '#panel_USL .button3, #panel_USL .button4 { position: absolute; top: 7px; right: 15px; '+
-        'width: 26px; height: 26px; border: 1px solid #aaa; border-radius: 2px; '+
-        'box-shadow: -12px 0 0 #fff; } '+
+        '.file_reader_USL >* { font: normal 16px/27px Meiryo; } '+
+        '#panel_USL .button1 { height: 26px; width: 40px; padding: 0 6px; line-height: 24px; } '+
+        '#panel_USL .button2 { display: none; } '+
+        '#panel_USL .fname { font-size: 14px; margin: 0 12px; height: 26px; } '+
+        '#panel_USL .button0, #panel_USL .button3, #panel_USL .button4, #panel_USL .avatar { '+
+        'position: absolute; width: 26px; height: 26px; padding: 0; '+
+        'border: 1px solid #aaa; border-radius: 2px; } '+
+        '#panel_USL .button0 { top: 7px; right: 48px; } '+
+        '#panel_USL .button3, #panel_USL .button4 { top: 7px; right: 15px; } '+
+        '#panel_USL .avatar { font: normal 16px/27px Meiryo; top: 0; right: 0; display: none; } '+
 
         '#panel_USL .us_list { width: 530px; margin: 0; height: calc(100% - 45px); '+
         'color: #000; background: #fff; overflow-y: scroll; } '+
@@ -77,10 +95,21 @@ function display(){
         '#panel_USL .dv { width: 80px; padding: 0 6px; margin: 0 -20px 2px 15px; } '+
         '.far { height: 17px; vertical-align: -3px; } '+
         '</style>'+
+
+        '<style class="avatar_style">'+
+        'html { overflow: scroll; } '+
+        '#panel_USL { height: 40px; width: 25px; box-shadow: none; } '+
+        '#panel_USL .avatar { padding: 5px 0; height: 38px; display: block; } '+
+        '#panel_USL .main_panel { display: none; } '+
+        '</style>'+
+
         '</div>';
 
     if(!document.querySelector('#panel_USL')){
         document.body.insertAdjacentHTML('beforeend', panel); }
+
+    if(document.querySelector('.avatar_style')){
+        document.querySelector('.avatar_style').disabled=true; }
 
     snap_scroll(1); // スナップスクロールの適用
 
@@ -90,13 +119,21 @@ function display(){
 
 
 function file_read(n){
+    let button1=document.querySelector('.file'+ n +'>.button1');
     let button2=document.querySelector('.file'+ n +'>.button2');
+    button1.onclick=()=>{
+        button2.value=null; // 同じファイルの再読み込みを可能にする
+        button2.click(); }
+
     button2.addEventListener("change" , function(){
         if(!(button2.value)) return; // ファイルが選択されない場合
         let file_list=button2.files;
         if(!file_list) return; // ファイルリストが選択されない場合
         let file=file_list[0];
         if(!file) return; // ファイルが無い場合
+
+        let fname=document.querySelector('.file'+ n +'>.fname');
+        fname.textContent=file_time(file.name);
 
         let file_reader=new FileReader();
         file_reader.readAsText(file);
@@ -107,6 +144,15 @@ function file_read(n){
     });
 
 
+    function file_time(filename){
+        if(filename){
+            let full=filename.split('T');
+            let tail=full[1];
+            if(tail){
+                tail=tail.substring(0, 5);
+                return full[0] +' T'+ tail; }}}
+
+
     let button3=document.querySelector('.button3');
     button3.onclick=function(){
         if(list0.length!=0 && list1.length!=0){
@@ -115,9 +161,14 @@ function file_read(n){
 
     let button4=document.querySelector('.button4');
     button4.onclick=function(){
-        let list_panel=document.querySelector('#panel_USL');
-        if(list_panel){
-            list_panel.remove(); }}
+        if(document.querySelector('.avatar_style')){
+            document.querySelector('.avatar_style').disabled=false; }}
+
+
+    let avatar=document.querySelector('#panel_USL .avatar');
+    avatar.onclick=function(){
+        if(document.querySelector('.avatar_style')){
+            document.querySelector('.avatar_style').disabled=true; }}
 
 } //  file_read()
 
@@ -174,10 +225,24 @@ function extract_data(n, dat){
             disp_list(0); }}
     else if(n==1){
         if(list1.length>0){
-            disp_list(1);
-            catch_line(); }}
+            disp_list(1); }}
 
 } // extract_data()
+
+
+
+let button0=document.querySelector('#panel_USL .button0');
+if(button0){
+    button0.onclick=()=>{
+        reverse_list(); }}
+
+function reverse_list(){
+    if(list0 && list0.length>1){
+        list0.reverse();
+        disp_list(0); }
+    if(list1 && list1.length>1){
+        list1.reverse();
+        disp_list(1); }}
 
 
 
@@ -232,6 +297,8 @@ function disp_list(n){
         ul.insertAdjacentHTML('beforeend', li ); }
 
     last(n); // リスト末尾のmargin最適化
+
+    catch_line();
 
 } // disp_list()
 
@@ -355,7 +422,6 @@ function catch_line(){
 
     function catch_up(item){
         let s_count=0; // スクロール動作のカウント
-
         item.style.boxShadow='inset 15px 0 0 0 red';
         setTimeout(()=>{
             item.style.boxShadow='';
@@ -377,15 +443,18 @@ function catch_line(){
 
 
             function seek_act(elem0, elem1, count){
-                let reach=
-                    elem0.getBoundingClientRect().top - elem1.getBoundingClientRect().top;
+                elem0.style.boxShadow='inset -15px 0 0 0 red';
                 snap_scroll(0);
-                setTimeout(()=>{
-                    if(count==1){
+
+                if(count==1){
+                    let reach=
+                        elem0.getBoundingClientRect().top - elem1.getBoundingClientRect().top;
+                    setTimeout(()=>{
+                        if(-2<reach && reach<2 ){
+                            reach=0; }
                         scroll_box.scrollBy(0, reach); // 最初のヒットのみスクロール
-                    }
-                    elem0.style.boxShadow='inset -15px 0 0 0 red';
-                }, 40);
+                    }, 100); }
+
                 setTimeout(()=>{
                     elem0.style.boxShadow='';
                     snap_scroll(1);
