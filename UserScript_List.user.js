@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        UserScript List
 // @namespace        http://tampermonkey.net/
-// @version        0.6
+// @version        0.7
 // @description        Tampermonkey の登録スクリプトのリストを表示
 // @author        Personwritep
 // @match        https://*/*
@@ -15,9 +15,9 @@
 
 let data; // バックアップデータの中身
 let get=[]; // リストディスプレイ用の配列
-let list0=[]; // リスト0用のデータ保持配列
-let list1=[]; // リスト1用のデータ保持配列
-let list_reverce=1; // 配列の降順表示
+let list0=[]; // 左リスト0 のデータ保持配列
+let list1=[]; // 右リスト1 のデータ保持配列
+let list_reverce=0; // 配列の降順表示「0: 昇順」「1:降順」
 
 
 display();
@@ -170,6 +170,12 @@ function file_read(n){
         if(document.querySelector('.avatar_style')){
             document.querySelector('.avatar_style').disabled=true; }}
 
+
+    let button0=document.querySelector('#panel_USL .button0');
+    if(button0){
+        button0.onclick=()=>{
+            nor_rev(); }}
+
 } //  file_read()
 
 
@@ -220,29 +226,54 @@ function extract_data(n, dat){
         else if(n==1){
             list1.push([position, enabled, name, version]); }}
 
+
     if(n==0){
         if(list0.length>0){
+            if(list_reverce==1){
+                list0.reverse(); }
             disp_list(0); }}
     else if(n==1){
         if(list1.length>0){
+            if(list_reverce==1){
+                list1.reverse(); }
             disp_list(1); }}
 
 } // extract_data()
 
 
 
-let button0=document.querySelector('#panel_USL .button0');
-if(button0){
-    button0.onclick=()=>{
-        reverse_list(); }}
 
-function reverse_list(){
-    if(list0 && list0.length>1){
-        list0.reverse();
-        disp_list(0); }
-    if(list1 && list1.length>1){
-        list1.reverse();
-        disp_list(1); }}
+function nor_rev(){
+    if(list_reverce==0){
+        list_reverce=1;
+        sort_reverse(); } // 降順
+    else{
+        list_reverce=0;
+        sort_normal(); } // 昇順
+
+
+    function sort_reverse(){
+        if(list0.length>1){
+            if(list0[0][0]<list0[1][0]){
+                list0.reverse();
+                disp_list(0); }}
+        if(list1.length>1){
+            if(list1[0][0]<list1[1][0]){
+                list1.reverse();
+                disp_list(1); }}}
+
+
+    function sort_normal(){
+        if(list0.length>1){
+            if(list0[0][0]>list0[1][0]){
+                list0.reverse();
+                disp_list(0); }}
+        if(list1.length>1){
+            if(list1[0][0]>list1[1][0]){
+                list1.reverse();
+                disp_list(1); }}}
+
+} // nor_rev()
 
 
 
@@ -301,6 +332,8 @@ function disp_list(n){
     catch_line();
 
 } // disp_list()
+
+
 
 
 window.addEventListener('resize', function(){
@@ -387,6 +420,7 @@ function compare(){
 } // compare()
 
 
+
 function mark_reset(){
     let items0=document.querySelectorAll('.us_list.l0 li');
     for(let k=0; k<items0.length; k++){
@@ -399,17 +433,18 @@ function mark_reset(){
 
 function mark0(new_list, color){
     let items0=document.querySelectorAll('.us_list.l0 li');
-    for(let k=0; k<new_list.length; k++){
-        let id=new_list[k];
-        items0[id-1].style.background=color; }}
+    for(let k=0; k<items0.length; k++){
+        let dp=items0[k].querySelector('.dp').textContent;
+        if(new_list.includes(dp)){
+            items0[k].style.background=color; }}}
 
 
 function mark1(new_list, color){
     let items1=document.querySelectorAll('.us_list.l1 li');
-    for(let k=0; k<new_list.length; k++){
-        let id=new_list[k];
-        items1[id-1].style.background=color; }}
-
+    for(let k=0; k<items1.length; k++){
+        let dp=items1[k].querySelector('.dp').textContent;
+        if(new_list.includes(dp)){
+            items1[k].style.background=color; }}}
 
 
 
