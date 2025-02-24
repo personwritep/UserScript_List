@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        UserScript List
 // @namespace        http://tampermonkey.net/
-// @version        0.7
+// @version        0.8
 // @description        Tampermonkey の登録スクリプトのリストを表示
 // @author        Personwritep
 // @match        https://*/*
@@ -17,6 +17,7 @@ let data; // バックアップデータの中身
 let get=[]; // リストディスプレイ用の配列
 let list0=[]; // 左リスト0 のデータ保持配列
 let list1=[]; // 右リスト1 のデータ保持配列
+let snap=1; // スナップスクロール「0:無効」「1:有効」
 let list_reverce=0; // 配列の降順表示「0: 昇順」「1:降順」
 
 
@@ -29,17 +30,44 @@ file_read(1);
 
 
 function display(){
+
+    let snap_SVG=
+        '<svg viewBox="0 0 530 530" style="height: 24px; fill: #00b2a5;">'+
+        '<path d="M112 67L112 185L417 185L417 67L112 '+
+        '67M17 158L17 236C45 228 70 207 98 198C93 192 83 189 76 186C57 176 37 165'+
+        ' 17 158M431 196L431 198C458 208 484 230 512 236L512 158C484 166 457 184 '+
+        '431 196M112 208L112 326L417 326L417 208L112 208M17 299L17 377C44 369 74 '+
+        '352 98 338C90 332 80 329 71 324C54 316 35 305 17 299M431 339C459 349 484'+
+        ' 370 512 377L512 299C492 305 474 317 455 326C448 329 436 332 431 339M112'+
+        ' 349L112 466L417 466L417 349L112 349z"></path>'+
+        '</svg>';
+
+    let rev_SVG=
+        '<svg viewBox="0 0 530 530" style="height: 22px; padding-top: 1px;">'+
+        '<path style="fill: #04a0ec;" d="M109 306L46 306C36 306 26 305 20 31'+
+        '5C11 330 31 343 40 352L119 431C126 438 139 457 150 457C161 457 174 438 1'+
+        '81 431L260 352C269 343 289 330 280 315C274 305 264 306 254 306L191 306L1'+
+        '91 153C191 131 196 103 190 82C189 77 185 73 179 71C164 68 147 71 132 71C'+
+        '125 71 118 70 113 75C108 80 109 87 109 94L109 136L109 306M340 231L340 40'+
+        '1L340 443C340 450 339 457 344 462C349 467 356 466 363 466C378 466 395 46'+
+        '9 410 466C416 464 420 460 421 455C427 434 422 406 422 384L422 231L485 23'+
+        '1C495 231 505 232 511 222C519 207 499 194 490 185L411 106C404 99 391 80 '+
+        '381 80C371 80 358 99 351 106L272 185C263 194 243 207 251 222C257 232 267'+
+        ' 231 277 231L340 231z"></path>'+
+        '</svg>';
+
+
     let panel=
         '<div id="panel_USL">'+
-        '<input class="avatar" type="submit" value="▶️">'+
+        '<input class="avatar" type="submit" value="▷">'+
         '<div class="main_panel">'+
 
         '<div class="wap">'+
         '<div class="file_reader_USL file0">'+
-        '<input class="button1" type="submit" value="File">'+
-        '<input class="button2" type="file">'+
+        '<input class="sw1" type="submit" value="File">'+
+        '<input class="sw2" type="file">'+
         '<span class="fname"></span>'+
-        '<input class="button3" type="submit" value="C" '+
+        '<input class="sw3" type="submit" value="Compare" '+
         'title="左右のリストを比較\n青: 一致　黄色: バージョン違い　白: 一致なし">'+
         '</div>'+
         '<div class="us_list l0">'+
@@ -48,11 +76,13 @@ function display(){
 
         '<div class="wap">'+
         '<div class="file_reader_USL file1">'+
-        '<input class="button1" type="submit" value="File">'+
-        '<input class="button2" type="file">'+
+        '<input class="sw1" type="submit" value="File">'+
+        '<input class="sw2" type="file">'+
         '<span class="fname"></span>'+
-        '<input class="button0" type="submit" value="⚙️">'+
-        '<input class="button4" type="submit" value="◀️">'+
+        '<button class="sw4" type="submit">'+ snap_SVG +'</button>'+
+        '<button class="sw5" type="submit">'+ rev_SVG +'</button>'+
+        '<input class="sw6" type="submit" value="◁">'+
+
         '</div>'+
         '<div class="us_list l1">'+
         '<ul></ul>'+
@@ -60,31 +90,33 @@ function display(){
         '</div>'+
 
         '<style>'+
+        '@import url("https://fonts.googleapis.com/css2?family=Roboto&display=swap"); '+
         'html { overflow: hidden; } '+
-        '#panel_USL { font-size: 85%; overflow: hidden; '+
-        'font-family: "Roboto", "LocalRoboto", "Helvetica Neue", "Helvetica", "sans-serif"; } '+
+        '#panel_USL { font-size: 85%; font-family: "Roboto", "sans-serif"; } '+
         '#panel_USL { position: fixed; top: 0; left: 0; z-index: calc(infinity); '+
-        'color: #666; background: #73a9d4; box-sizing: border-box; '+
-        'border: 1px solid #aaa; border-radius: 2px; box-shadow: 0 0 0 100vw #00000080; } '+
-        '#panel_USL .main_panel { '+
-        'display: flex; flex-direction: row; justify-content: space-between; padding: 2px 15px; } '+
-        '.wap { position: relative; height: calc(100vh - 10px); padding: 0 3px; } '+
+        'overflow-y: hidden; overflow-x: scroll; scrollbar-width: none; width: 100vw; '+
+        'color: #666; box-sizing: border-box; border: 1px solid #aaa; } '+
+        '#panel_USL .main_panel { display: flex; padding: 2px 34px 4px 15px; width: 1075px; '+
+        'background: #73a9d4; } '+
+        '.wap { position: relative; height: auto; padding: 0 3px; } '+
 
         '.file_reader_USL { position: relative; z-index: 1; display: flex; align-items: center; '+
         'padding: 0 15px; height: 40px; margin-bottom: 3px; color: #000; background: #fff; } '+
         '.file_reader_USL >* { font: normal 16px/27px Meiryo; } '+
-        '#panel_USL .button1 { height: 26px; width: 40px; padding: 0 6px; line-height: 24px; } '+
-        '#panel_USL .button2 { display: none; } '+
-        '#panel_USL .fname { font-size: 14px; margin: 0 12px; height: 26px; } '+
-        '#panel_USL .button0, #panel_USL .button3, #panel_USL .button4, #panel_USL .avatar { '+
-        'position: absolute; width: 26px; height: 26px; padding: 0; '+
+        '#panel_USL .sw1 { height: 26px; width: 40px; padding: 0 6px; line-height: 24px; } '+
+        '#panel_USL .sw2 { display: none; } '+
+        '#panel_USL .sw5, #panel_USL .sw3, #panel_USL .sw6, #panel_USL .sw4, '+
+        '#panel_USL .avatar { position: absolute; width: 26px; height: 26px; padding: 0; '+
         'border: 1px solid #aaa; border-radius: 2px; } '+
-        '#panel_USL .button0 { top: 7px; right: 48px; } '+
-        '#panel_USL .button3, #panel_USL .button4 { top: 7px; right: 15px; } '+
+        '#panel_USL .sw5 { top: 7px; right: 15px; } '+
+        '#panel_USL .sw3 { top: 7px; right: 15px; width: 80px; } '+
+        '#panel_USL .sw6 { top: 7px; right: -32px; } '+
+        '#panel_USL .sw4 { top: 7px; right: 48px; } '+
+        '#panel_USL .fname { font-size: 14px; margin: 0 12px; height: 26px; } '+
         '#panel_USL .avatar { font: normal 16px/27px Meiryo; top: 0; right: 0; display: none; } '+
 
-        '#panel_USL .us_list { width: 530px; margin: 0; height: calc(100% - 45px); '+
-        'color: #000; background: #fff; overflow-y: scroll; } '+
+        '#panel_USL .us_list { width: 530px; margin: 0; height: calc(100vh - 50px); '+
+        'color: #000; background: #fff; overflow-y: scroll; overflow-x: hidden; } '+
         '#panel_USL .us_list ul { padding: 0; margin: 0; } '+
         '#panel_USL .us_list li { line-height: 21px; height: 23.2px; box-sizing: content-box; '+
         'padding: 12px 0 8px 4px; border-bottom: 1px solid #ccc; list-style: none; } '+
@@ -119,15 +151,15 @@ function display(){
 
 
 function file_read(n){
-    let button1=document.querySelector('.file'+ n +'>.button1');
-    let button2=document.querySelector('.file'+ n +'>.button2');
-    button1.onclick=()=>{
-        button2.value=null; // 同じファイルの再読み込みを可能にする
-        button2.click(); }
+    let sw1=document.querySelector('.file'+ n +'>.sw1');
+    let sw2=document.querySelector('.file'+ n +'>.sw2');
+    sw1.onclick=()=>{
+        sw2.value=null; // 同じファイルの再読み込みを可能にする
+        sw2.click(); }
 
-    button2.addEventListener("change" , function(){
-        if(!(button2.value)) return; // ファイルが選択されない場合
-        let file_list=button2.files;
+    sw2.addEventListener("change" , function(){
+        if(!(sw2.value)) return; // ファイルが選択されない場合
+        let file_list=sw2.files;
         if(!file_list) return; // ファイルリストが選択されない場合
         let file=file_list[0];
         if(!file) return; // ファイルが無い場合
@@ -153,14 +185,33 @@ function file_read(n){
                 return full[0] +' T'+ tail; }}}
 
 
-    let button3=document.querySelector('.button3');
-    button3.onclick=function(){
+    let sw3=document.querySelector('#panel_USL .sw3');
+    sw3.onclick=function(){
         if(list0.length!=0 && list1.length!=0){
             compare(); }}
 
 
-    let button4=document.querySelector('.button4');
-    button4.onclick=function(){
+    let sw4=document.querySelector('#panel_USL .sw4');
+    sw4.onclick=function(){
+        let svg4=sw4.querySelector('svg');
+        if(snap==1){
+            snap=0;
+            svg4.style.opacity='0.2';
+            snap_scroll(1); }
+        else{
+            snap=1;
+            svg4.style.opacity='1';
+            snap_scroll(1); }}
+
+
+    let sw5=document.querySelector('#panel_USL .sw5');
+    if(sw5){
+        sw5.onclick=()=>{
+            nor_rev(); }}
+
+
+    let sw6=document.querySelector('#panel_USL .sw6');
+    sw6.onclick=function(){
         if(document.querySelector('.avatar_style')){
             document.querySelector('.avatar_style').disabled=false; }}
 
@@ -169,12 +220,6 @@ function file_read(n){
     avatar.onclick=function(){
         if(document.querySelector('.avatar_style')){
             document.querySelector('.avatar_style').disabled=true; }}
-
-
-    let button0=document.querySelector('#panel_USL .button0');
-    if(button0){
-        button0.onclick=()=>{
-            nor_rev(); }}
 
 } //  file_read()
 
@@ -510,7 +555,7 @@ function snap_scroll(n){
 
     let panel_USL=document.querySelector('#panel_USL');
     if(panel_USL){
-        if(n==1){
+        if(n==1 && snap==1){
             panel_USL.insertAdjacentHTML('beforeend', s_style); }
         else{
             if(panel_USL.querySelector('.snap_style')){
