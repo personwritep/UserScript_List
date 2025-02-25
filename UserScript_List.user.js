@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        UserScript List
 // @namespace        http://tampermonkey.net/
-// @version        0.8
+// @version        0.9
 // @description        Tampermonkey の登録スクリプトのリストを表示
 // @author        Personwritep
 // @match        https://*/*
@@ -17,15 +17,26 @@ let data; // バックアップデータの中身
 let get=[]; // リストディスプレイ用の配列
 let list0=[]; // 左リスト0 のデータ保持配列
 let list1=[]; // 右リスト1 のデータ保持配列
-let snap=1; // スナップスクロール「0:無効」「1:有効」
-let list_reverce=0; // 配列の降順表示「0: 昇順」「1:降順」
+let shrink; // パネルの縮小表示「0:通常」「1:縮小」
+let snap; // スナップスクロール「0:無効」「1:有効」
+let list_reverce; // 配列の降順表示「0: 昇順」「1:降順」
+
+
+let read_json=sessionStorage.getItem('USList'); // ローカルストレージ 保存名
+let usl_set=JSON.parse(read_json);
+if(usl_set==null){
+    usl_set=[0, 1, 0]; } //「UserScript List」のコントロール「shrink, snap, list_reverce」
+
+shrink=usl_set[0];
+snap=usl_set[1];
+list_reverce=usl_set[2];
 
 
 display();
+environ();
 
 file_read(0);
 file_read(1);
-
 
 
 
@@ -103,7 +114,7 @@ function display(){
         '.file_reader_USL { position: relative; z-index: 1; display: flex; align-items: center; '+
         'padding: 0 15px; height: 40px; margin-bottom: 3px; color: #000; background: #fff; } '+
         '.file_reader_USL >* { font: normal 16px/27px Meiryo; } '+
-        '#panel_USL .sw1 { height: 26px; width: 40px; padding: 0 6px; line-height: 24px; } '+
+        '#panel_USL .sw1 { height: 26px; width: 38px; padding: 0; line-height: 24px; } '+
         '#panel_USL .sw2 { display: none; } '+
         '#panel_USL .sw5, #panel_USL .sw3, #panel_USL .sw6, #panel_USL .sw4, '+
         '#panel_USL .avatar { position: absolute; width: 26px; height: 26px; padding: 0; '+
@@ -112,6 +123,7 @@ function display(){
         '#panel_USL .sw3 { top: 7px; right: 15px; width: 80px; } '+
         '#panel_USL .sw6 { top: 7px; right: -32px; } '+
         '#panel_USL .sw4 { top: 7px; right: 48px; } '+
+        '#panel_USL .sw4 svg { opacity: 0.2; } '+
         '#panel_USL .fname { font-size: 14px; margin: 0 12px; height: 26px; } '+
         '#panel_USL .avatar { font: normal 16px/27px Meiryo; top: 0; right: 0; display: none; } '+
 
@@ -120,6 +132,7 @@ function display(){
         '#panel_USL .us_list ul { padding: 0; margin: 0; } '+
         '#panel_USL .us_list li { line-height: 21px; height: 23.2px; box-sizing: content-box; '+
         'padding: 12px 0 8px 4px; border-bottom: 1px solid #ccc; list-style: none; } '+
+        '#panel_USL .us_list li:hover { box-shadow: inset 0 0 0 40px #aaaaaa20; } '+
         '#panel_USL .us_list li >* { display: inline-block; } '+
         '#panel_USL .dp { width: 55px; text-align: center; } '+
         '#panel_USL .de { width: 45px; text-align: left; } '+
@@ -135,17 +148,90 @@ function display(){
         '#panel_USL .main_panel { display: none; } '+
         '</style>'+
 
+        '<style class="snap_style">'+
+        '#panel_USL .us_list { scroll-snap-type: y mandatory; } '+
+        '#panel_USL .us_list li { scroll-snap-align: start; } '+
+        '#panel_USL .sw4 svg { opacity: 1; } '+
+        '</style>'+
         '</div>';
 
     if(!document.querySelector('#panel_USL')){
         document.body.insertAdjacentHTML('beforeend', panel); }
 
-    if(document.querySelector('.avatar_style')){
-        document.querySelector('.avatar_style').disabled=true; }
+    shrink_panel(shrink);
 
-    snap_scroll(1); // スナップスクロールの適用
+    snap_set(snap);
 
 } // display()
+
+
+
+
+function environ(){
+    window.addEventListener('resize', function(){
+        if(list0.length>0){
+            last(0); }
+        if(list1.length>0){
+            last(1); }});
+
+
+    document.addEventListener("keydown", (event)=>{
+        let s_list=document.querySelectorAll('#panel_USL .us_list');
+        if(s_list.length==2){
+            if(event.keyCode==38){ //「⇧」キー入力
+                focus_list(); }
+
+            else if(event.keyCode==40){ //「⇩」キー入力
+                focus_list(); }
+
+            else if(event.keyCode==37){ //「⇦」リストのフォーカス切換え
+                event.preventDefault();
+                focus_list_lr(0); }
+
+            else if(event.keyCode==39){ //「⇨」リストのフォーカス切換え
+                event.preventDefault();
+                focus_list_lr(1); }
+
+            else if(event.keyCode==33){ //「PageUp」
+                event.preventDefault();
+                Page_list(0); }
+
+            else if(event.keyCode==34){ //「PageDown」
+                event.preventDefault();
+                Page_list(1); }
+
+
+            function focus_list(){
+                if(s_list[0]!=document.activeElement && s_list[1]!=document.activeElement){
+                    s_list[1].focus(); } // 右リストを優先
+                setTimeout(()=>{ //「⇧・⇩」キーの長押しでスクロール加速
+                    snap_scroll(0);
+                }, 200);
+
+                document.addEventListener("keyup", ()=>{
+                    setTimeout(()=>{ //「⇧・⇩」キーUPでスナップを「ON」に戻す
+                        snap_scroll(1);
+                    }, 200); }); }
+
+
+            function focus_list_lr(n){
+                if(n==0){
+                    s_list[0].focus(); }
+                else{
+                    s_list[1].focus(); }}
+
+
+            function Page_list(n){
+                let reach=s_list[0].clientHeight - 80;
+                if(n==0){
+                    s_list[0].scrollBy(0, -reach);
+                    s_list[1].scrollBy(0, -reach); }
+                else{
+                    s_list[0].scrollBy(0, reach);
+                    s_list[1].scrollBy(0, reach); }}
+        }});
+
+} // environ()
 
 
 
@@ -172,8 +258,7 @@ function file_read(n){
         file_reader.onload=function(){
             let data_in=JSON.parse(file_reader.result);
             data=JSON.stringify(data_in); // 読込み
-            extract_data(n, data); } // データの表示
-    });
+            extract_data(n, data); }}); // データの表示
 
 
     function file_time(filename){
@@ -193,15 +278,10 @@ function file_read(n){
 
     let sw4=document.querySelector('#panel_USL .sw4');
     sw4.onclick=function(){
-        let svg4=sw4.querySelector('svg');
-        if(snap==1){
-            snap=0;
-            svg4.style.opacity='0.2';
-            snap_scroll(1); }
+        if(snap==0){
+            snap_set(1); }
         else{
-            snap=1;
-            svg4.style.opacity='1';
-            snap_scroll(1); }}
+            snap_set(0); }}
 
 
     let sw5=document.querySelector('#panel_USL .sw5');
@@ -212,14 +292,12 @@ function file_read(n){
 
     let sw6=document.querySelector('#panel_USL .sw6');
     sw6.onclick=function(){
-        if(document.querySelector('.avatar_style')){
-            document.querySelector('.avatar_style').disabled=false; }}
+        shrink_panel(1); }
 
 
     let avatar=document.querySelector('#panel_USL .avatar');
     avatar.onclick=function(){
-        if(document.querySelector('.avatar_style')){
-            document.querySelector('.avatar_style').disabled=true; }}
+        shrink_panel(0); }
 
 } //  file_read()
 
@@ -287,42 +365,6 @@ function extract_data(n, dat){
 
 
 
-
-function nor_rev(){
-    if(list_reverce==0){
-        list_reverce=1;
-        sort_reverse(); } // 降順
-    else{
-        list_reverce=0;
-        sort_normal(); } // 昇順
-
-
-    function sort_reverse(){
-        if(list0.length>1){
-            if(list0[0][0]<list0[1][0]){
-                list0.reverse();
-                disp_list(0); }}
-        if(list1.length>1){
-            if(list1[0][0]<list1[1][0]){
-                list1.reverse();
-                disp_list(1); }}}
-
-
-    function sort_normal(){
-        if(list0.length>1){
-            if(list0[0][0]>list0[1][0]){
-                list0.reverse();
-                disp_list(0); }}
-        if(list1.length>1){
-            if(list1[0][0]>list1[1][0]){
-                list1.reverse();
-                disp_list(1); }}}
-
-} // nor_rev()
-
-
-
-
 function disp_list(n){
     let toggle_G=
         '<svg class="far" viewBox="0 0 240 168">'+
@@ -372,6 +414,7 @@ function disp_list(n){
 
         ul.insertAdjacentHTML('beforeend', li ); }
 
+
     last(n); // リスト末尾のmargin最適化
 
     catch_line();
@@ -379,14 +422,6 @@ function disp_list(n){
 } // disp_list()
 
 
-
-
-window.addEventListener('resize', function(){
-    if(list0.length>0){
-        last(0); }
-
-    if(list1.length>0){
-        last(1); }});
 
 
 function last(n){
@@ -400,9 +435,61 @@ function last(n){
 
 
 
+function catch_line(){
+    let items1=document.querySelectorAll('.us_list.l1 li');
+    for(let k=0; k<items1.length; k++){
+        items1[k].onclick=function(){
+            catch_up(items1[k]); }}
+
+
+    function catch_up(item){
+        let s_count=0; // スクロール動作のカウント
+        item.style.boxShadow='inset 15px 0 0 0 red';
+        setTimeout(()=>{
+            item.style.boxShadow='';
+        }, 800);
+
+        let name_span1=item.querySelector('.dn');
+        if(name_span1){
+            let name=name_span1.textContent;
+
+            let scroll_box=document.querySelector('.us_list.l0');
+            let items0=document.querySelectorAll('.us_list.l0 li');
+            for(let k=0; k<items0.length; k++){
+                let name_span0=items0[k].querySelector('.dn');
+                if(name_span0){
+                    if(name==name_span0.textContent){
+                        s_count+=1; // 最初のヒットのみスクロール
+                        seek_act(items0[k], item, s_count); }}}
+
+
+            function seek_act(elem0, elem1, count){
+                elem0.style.boxShadow='inset -15px 0 0 0 red';
+                snap_scroll(0);
+
+                if(count==1){
+                    let reach=
+                        elem0.getBoundingClientRect().top - elem1.getBoundingClientRect().top;
+                    setTimeout(()=>{
+                        if(-2<reach && reach<2 ){
+                            reach=0; }
+                        scroll_box.scrollBy(0, reach); // 最初のヒットのみスクロール
+                    }, 100); }
+
+                setTimeout(()=>{
+                    elem0.style.boxShadow='';
+                    snap_scroll(1);
+                }, 800); } // seek_act()
+
+        }} // catch_up()
+
+} // catch_line()
+
+
+
+
 function compare(){
     mark_reset();
-
 
     let vv0=[];
     for(let k=0; k<list1.length; k++){
@@ -429,9 +516,8 @@ function compare(){
     let new_v0=Array.from(new Set(v0)); // 重複を整理　name・version一致 の position 配列
     new_vv0=new_vv0.filter(i=>new_v0.indexOf(i)==-1); // version違いの position 配列
 
-    mark0(new_v0, '#c0dfed');
-    mark0(new_vv0, '#fff9c4');
-
+    mark0(new_v0, '#e1f5fe'); // 一致の配色 🟠
+    mark0(new_vv0, '#fef7ec'); // バージョン違いの配色 🟠
 
 
     let vv1=[];
@@ -459,8 +545,8 @@ function compare(){
     let new_v1=Array.from(new Set(v1)); // 重複を整理　name・version一致 の position 配列
     new_vv1=new_vv1.filter(i=>new_v1.indexOf(i)==-1); // version違いの position 配列
 
-    mark1(new_v1, '#c0dfed');
-    mark1(new_vv1, '#fff9c4');
+    mark1(new_v1, '#e1f5fe'); // 一致の配色 🟠
+    mark1(new_vv1, '#fef7ec'); // バージョン違いの配色 🟠
 
 } // compare()
 
@@ -493,75 +579,96 @@ function mark1(new_list, color){
 
 
 
-function catch_line(){
-    let items1=document.querySelectorAll('.us_list.l1 li');
-    for(let k=0; k<items1.length; k++){
-        items1[k].onclick=function(){
-            catch_up(items1[k]); }}
 
+function snap_set(n){
+    if(n==0){
+        snap=0;
+        snap_scroll(1); }
+    else{
+        snap=1;
+        snap_scroll(1); }
 
-    function catch_up(item){
-        let s_count=0; // スクロール動作のカウント
-        item.style.boxShadow='inset 15px 0 0 0 red';
-        setTimeout(()=>{
-            item.style.boxShadow='';
-        }, 800);
-
-        let name_span1=item.querySelector('.dn');
-        if(name_span1){
-            let name=name_span1.textContent;
-
-            let scroll_box=document.querySelector('.us_list.l0');
-            let items0=document.querySelectorAll('.us_list.l0 li');
-            for(let k=0; k<items0.length; k++){
-                let name_span0=items0[k].querySelector('.dn');
-                if(name_span0){
-                    if(name==name_span0.textContent){
-                        s_count+=1; // 最初のヒットのみスクロール
-                        seek_act(items0[k], item, s_count);
-                    }}}
-
-
-            function seek_act(elem0, elem1, count){
-                elem0.style.boxShadow='inset -15px 0 0 0 red';
-                snap_scroll(0);
-
-                if(count==1){
-                    let reach=
-                        elem0.getBoundingClientRect().top - elem1.getBoundingClientRect().top;
-                    setTimeout(()=>{
-                        if(-2<reach && reach<2 ){
-                            reach=0; }
-                        scroll_box.scrollBy(0, reach); // 最初のヒットのみスクロール
-                    }, 100); }
-
-                setTimeout(()=>{
-                    elem0.style.boxShadow='';
-                    snap_scroll(1);
-                }, 800); } // seek_act()
-
-        }} // catch_up()
-
-} // catch_line()
-
+    usl_set[1]=snap;
+    let write_json=JSON.stringify(usl_set);
+    sessionStorage.setItem('USList', write_json); } // ローカルストレージ名
 
 
 
 function snap_scroll(n){
-    let s_style=
-        '<style class="snap_style">'+
-        '#panel_USL .us_list { scroll-snap-type: y mandatory; } '+
-        '#panel_USL .us_list li { scroll-snap-align: start; }</style>';
-
-    let panel_USL=document.querySelector('#panel_USL');
-    if(panel_USL){
+    let s_style=document.querySelector('.snap_style');
+    if(s_style){
         if(n==1 && snap==1){
-            panel_USL.insertAdjacentHTML('beforeend', s_style); }
+            s_style.disabled=false; }
         else{
-            if(panel_USL.querySelector('.snap_style')){
-                panel_USL.querySelector('.snap_style').remove(); }}}
+            s_style.disabled=true; }}
 
 } // snap_scroll()
+
+
+
+
+function nor_rev(){
+    if(list_reverce==0){
+        list_reverce=1;
+        sort_reverse(); } // 降順
+    else{
+        list_reverce=0;
+        sort_normal(); } // 昇順
+
+    usl_set[2]=list_reverce;
+    let write_json=JSON.stringify(usl_set);
+    sessionStorage.setItem('USList', write_json); // ローカルストレージ名
+
+
+    function sort_reverse(){
+        if(list0.length>1){
+            if(list0[0][0]<list0[1][0]){
+                list0.reverse();
+                disp_list(0); }}
+        if(list1.length>1){
+            if(list1[0][0]<list1[1][0]){
+                list1.reverse();
+                disp_list(1); }}}
+
+
+    function sort_normal(){
+        if(list0.length>1){
+            if(list0[0][0]>list0[1][0]){
+                list0.reverse();
+                disp_list(0); }}
+        if(list1.length>1){
+            if(list1[0][0]>list1[1][0]){
+                list1.reverse();
+                disp_list(1); }}}
+
+} // nor_rev()
+
+
+
+
+function shrink_panel(n){
+    let avatar_style=document.querySelector('.avatar_style');
+    if(avatar_style){
+        if(n==0){
+            avatar_style.disabled=true;
+            usl_set[0]=0;
+            let write_json=JSON.stringify(usl_set);
+            sessionStorage.setItem('USList', write_json); } // ローカルストレージ名
+        else{
+            avatar_style.disabled=false;
+            usl_set[0]=1;
+            let write_json=JSON.stringify(usl_set);
+            sessionStorage.setItem('USList', write_json); }} // ローカルストレージ名
+
+} // shrink_panel()
+
+
+
+
+
+
+
+
 
 
 
