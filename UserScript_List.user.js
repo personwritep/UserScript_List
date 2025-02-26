@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        UserScript List
 // @namespace        http://tampermonkey.net/
-// @version        0.9
+// @version        1.0
 // @description        Tampermonkey の登録スクリプトのリストを表示
 // @author        Personwritep
 // @match        https://*/*
@@ -19,17 +19,19 @@ let list0=[]; // 左リスト0 のデータ保持配列
 let list1=[]; // 右リスト1 のデータ保持配列
 let shrink; // パネルの縮小表示「0:通常」「1:縮小」
 let snap; // スナップスクロール「0:無効」「1:有効」
-let list_reverce; // 配列の降順表示「0: 昇順」「1:降順」
+let list_reverce; // 配列の降順表示「0:昇順」「1:降順」
+let wrap_select; // 左右リストの表示「0:両方」「1:左のみ」「2:右のみ」
 
 
-let read_json=sessionStorage.getItem('USList'); // ローカルストレージ 保存名
+let read_json=sessionStorage.getItem('USList'); // ストレージ 保存名
 let usl_set=JSON.parse(read_json);
 if(usl_set==null){
-    usl_set=[0, 1, 0]; } //「UserScript List」のコントロール「shrink, snap, list_reverce」
+    usl_set=[0, 1, 0, 0]; } //「UserScript List」のコントロール「shrink, snap, list_reverce, wrap_select」
 
 shrink=usl_set[0];
 snap=usl_set[1];
 list_reverce=usl_set[2];
+wrap_select=usl_set[3];
 
 
 display();
@@ -70,34 +72,38 @@ function display(){
 
     let panel=
         '<div id="panel_USL">'+
-        '<input class="avatar" type="submit" value="▷">'+
+        '<input class="avatar1 sw" type="submit" value="▷">'+
+
         '<div class="main_panel">'+
 
-        '<div class="wap">'+
+        '<div class="wrap">'+
         '<div class="file_reader_USL file0">'+
-        '<input class="sw1" type="submit" value="File">'+
+        '<button class="sw0 sw" type="submit">×</button>'+
+        '<input class="sw1 sw" type="submit" value="File">'+
         '<input class="sw2" type="file">'+
         '<span class="fname"></span>'+
-        '<input class="sw3" type="submit" value="Compare" '+
+        '<input class="sw3 sw" type="submit" value="Equal" '+
         'title="左右のリストを比較\n青: 一致　黄色: バージョン違い　白: 一致なし">'+
         '</div>'+
         '<div class="us_list l0">'+
         '<ul></ul>'+
         '</div></div>'+
 
-        '<div class="wap">'+
+        '<div class="wrap">'+
         '<div class="file_reader_USL file1">'+
-        '<input class="sw1" type="submit" value="File">'+
+        '<button class="sw0 sw" type="submit">×</button>'+
+        '<input class="sw1 sw" type="submit" value="File">'+
         '<input class="sw2" type="file">'+
         '<span class="fname"></span>'+
-        '<button class="sw4" type="submit">'+ snap_SVG +'</button>'+
-        '<button class="sw5" type="submit">'+ rev_SVG +'</button>'+
-        '<input class="sw6" type="submit" value="◁">'+
-
+        '<button class="sw4 sw" type="submit">'+ snap_SVG +'</button>'+
+        '<button class="sw5 sw" type="submit">'+ rev_SVG +'</button>'+
         '</div>'+
         '<div class="us_list l1">'+
         '<ul></ul>'+
         '</div></div>'+
+
+        '<input class="avatar0 sw" type="submit" value="◁">'+
+
         '</div>'+
 
         '<style>'+
@@ -107,25 +113,28 @@ function display(){
         '#panel_USL { position: fixed; top: 0; left: 0; z-index: calc(infinity); '+
         'overflow-y: hidden; overflow-x: scroll; scrollbar-width: none; width: 100vw; '+
         'color: #666; box-sizing: border-box; border: 1px solid #aaa; } '+
-        '#panel_USL .main_panel { display: flex; padding: 2px 34px 4px 15px; width: 1075px; '+
-        'background: #73a9d4; } '+
-        '.wap { position: relative; height: auto; padding: 0 3px; } '+
+        '#panel_USL .main_panel { display: flex; position: relative; width: fit-content; '+
+        'padding: 2px 34px 4px 15px; background: #73a9d4; } '+
+        '.wrap { position: relative; height: auto; padding: 0 3px; } '+
+
+        '#panel_USL .sw { font: normal 16px/27px Meiryo; width: 26px; height: 26px; '+
+        'padding: 0; border: 1px solid #aaa; border-radius: 2px; } '+
+
+        '#panel_USL .avatar1 { position: absolute; top: 0; right: 0; display: none; } '+
+        '#panel_USL .avatar0 { position: absolute; top: 9px; right: 5px; z-index: 2; } '+
 
         '.file_reader_USL { position: relative; z-index: 1; display: flex; align-items: center; '+
         'padding: 0 15px; height: 40px; margin-bottom: 3px; color: #000; background: #fff; } '+
-        '.file_reader_USL >* { font: normal 16px/27px Meiryo; } '+
-        '#panel_USL .sw1 { height: 26px; width: 38px; padding: 0; line-height: 24px; } '+
+
+        '#panel_USL .sw1 { height: 26px; width: 38px; } '+
         '#panel_USL .sw2 { display: none; } '+
-        '#panel_USL .sw5, #panel_USL .sw3, #panel_USL .sw6, #panel_USL .sw4, '+
-        '#panel_USL .avatar { position: absolute; width: 26px; height: 26px; padding: 0; '+
-        'border: 1px solid #aaa; border-radius: 2px; } '+
-        '#panel_USL .sw5 { top: 7px; right: 15px; } '+
-        '#panel_USL .sw3 { top: 7px; right: 15px; width: 80px; } '+
-        '#panel_USL .sw6 { top: 7px; right: -32px; } '+
-        '#panel_USL .sw4 { top: 7px; right: 48px; } '+
+        '#panel_USL .sw3 { position: absolute; top: 7px; right: 15px; width: 56px; } '+
+        '#panel_USL .sw4 { position: absolute; top: 7px; right: 48px; } '+
         '#panel_USL .sw4 svg { opacity: 0.2; } '+
-        '#panel_USL .fname { font-size: 14px; margin: 0 12px; height: 26px; } '+
-        '#panel_USL .avatar { font: normal 16px/27px Meiryo; top: 0; right: 0; display: none; } '+
+        '#panel_USL .sw5 { position: absolute; top: 7px; right: 15px; } '+
+
+        '#panel_USL .sw0 { width: 16px; margin-right: 8px; } '+
+        '#panel_USL .fname { font: normal 14px/27px Meiryo; margin: 0 12px; height: 26px; } '+
 
         '#panel_USL .us_list { width: 530px; margin: 0; height: calc(100vh - 50px); '+
         'color: #000; background: #fff; overflow-y: scroll; overflow-x: hidden; } '+
@@ -144,7 +153,7 @@ function display(){
         '<style class="avatar_style">'+
         'html { overflow: scroll; } '+
         '#panel_USL { height: 40px; width: 25px; box-shadow: none; } '+
-        '#panel_USL .avatar { padding: 5px 0; height: 38px; display: block; } '+
+        '#panel_USL .avatar1 { padding: 5px 0; height: 38px; display: block; } '+
         '#panel_USL .main_panel { display: none; } '+
         '</style>'+
 
@@ -159,8 +168,8 @@ function display(){
         document.body.insertAdjacentHTML('beforeend', panel); }
 
     shrink_panel(shrink);
-
     snap_set(snap);
+    select_view(wrap_select);
 
 } // display()
 
@@ -290,14 +299,22 @@ function file_read(n){
             nor_rev(); }}
 
 
-    let sw6=document.querySelector('#panel_USL .sw6');
-    sw6.onclick=function(){
+    let avatar0=document.querySelector('#panel_USL .avatar0');
+    avatar0.onclick=function(){
         shrink_panel(1); }
 
 
-    let avatar=document.querySelector('#panel_USL .avatar');
-    avatar.onclick=function(){
+    let avatar1=document.querySelector('#panel_USL .avatar1');
+    avatar1.onclick=function(){
         shrink_panel(0); }
+
+
+    let sw0=document.querySelectorAll('#panel_USL .sw0');
+    if(sw0.length==2){
+        sw0[0].onclick=()=>{
+            select_set(0); }
+        sw0[1].onclick=()=>{
+            select_set(1); }}
 
 } //  file_read()
 
@@ -665,10 +682,54 @@ function shrink_panel(n){
 
 
 
+function select_view(n){
+
+    let wide_SVG=
+        '<svg viewBox="0 0 300 300" style="width: 14px; height: 14px;">'+
+        '<path style="fill: rgb(0, 0, 0);" d="M89 57C80 58 73 72 67 79C55 96 42 1'+
+        '13 29 129C23 138 15 147 16 159C17 166 22 172 27 178C34 188 41 197 49 207'+
+        'C58 220 68 232 77 245C81 250 86 256 93 254C107 250 101 232 97 223C92 213'+
+        ' 87 204 83 194C75 172 74 148 80 126C85 109 95 95 100 79C103 71 102 54 89'+
+        ' 57M207 57C193 61 200 80 204 89C208 98 213 107 217 117C225 139 226 163 2'+
+        '20 185C215 201 205 216 200 232C197 240 198 257 211 255C220 253 227 240 2'+
+        '32 233C245 216 258 199 271 182C277 173 285 165 284 153C283 145 278 138 2'+
+        '73 132L252 104C242 91 233 78 223 66C219 61 214 55 207 57z"></path>'+
+        '</svg>';
+
+
+    let wrap=document.querySelectorAll('#panel_USL .wrap');
+    let sw0=document.querySelectorAll('#panel_USL .sw0');
+    if(sw0.length==2 && wrap.length==2){
+        if(n==0){
+            wrap[0].style.display='block';
+            sw0[0].textContent='×';
+            wrap[1].style.display='block';
+            sw0[1].textContent='×'; }
+        else if(n==1){
+            wrap[0].style.display='block';
+            sw0[0].innerHTML=wide_SVG;
+            wrap[1].style.display='none'; }
+        else if(n==2){
+            wrap[0].style.display='none';
+            wrap[1].style.display='block';
+            sw0[1].innerHTML=wide_SVG; }}}
 
 
 
+function select_set(n){
+    if(wrap_select==0){
+        if(n==0){
+            wrap_select=2; }
+        else{
+            wrap_select=1; }}
+    else if(wrap_select==1){
+        wrap_select=0; }
+    else if(wrap_select==2){
+        wrap_select=0; }
 
+    select_view(wrap_select);
 
-
+    usl_set[3]=wrap_select;
+    let write_json=JSON.stringify(usl_set);
+    sessionStorage.setItem('USList', write_json); } // ローカルストレージ名
 
