@@ -52,21 +52,21 @@ function main(){
     let get=[]; // リストディスプレイ用の配列
     let list0=[]; // 左リスト0 のデータ保持配列
     let list1=[]; // 右リスト1 のデータ保持配列
-    let usl_set=[]; //「UserScript List」のコントロール「wrap_select, snap, list_reverce」
+    let usl_set=[]; //「UserScript List」のコントロール「wrap_select, snap, list_reverse」
     let wrap_select; // 左右リストの表示「0:両方」「1:左のみ」「2:右のみ」
     let snap; // スナップスクロール「0:無効」「1:有効」
-    let list_reverce; // 配列の降順表示「0:昇順」「1:降順」
+    let list_reverse; // 配列の降順表示「0:昇順」「1:降順」
 
 
 
     let read_json=localStorage.getItem('USList'); // ストレージ 保存名
     usl_set=JSON.parse(read_json);
     if(usl_set==null){
-        usl_set=[0, 1, 0]; } //「shrink, snap, list_reverce, wrap_select」初期値
+        usl_set=[0, 1, 0]; } //「wrap_select, snap, list_reverse」初期値
 
     wrap_select=usl_set[0];
     snap=usl_set[1];
-    list_reverce=usl_set[2];
+    list_reverse=usl_set[2];
 
 
     display();
@@ -381,12 +381,12 @@ function main(){
 
         if(n==0){
             if(list0.length>0){
-                if(list_reverce==1){
+                if(list_reverse==1){
                     list0.reverse(); }
                 disp_list(0); }}
         else if(n==1){
             if(list1.length>0){
-                if(list_reverce==1){
+                if(list_reverse==1){
                     list1.reverse(); }
                 disp_list(1); }}
 
@@ -638,14 +638,14 @@ function main(){
 
 
     function nor_rev(){
-        if(list_reverce==0){
-            list_reverce=1;
+        if(list_reverse==0){
+            list_reverse=1;
             sort_reverse(); } // 降順
         else{
-            list_reverce=0;
+            list_reverse=0;
             sort_normal(); } // 昇順
 
-        usl_set[2]=list_reverce;
+        usl_set[2]=list_reverse;
         let write_json=JSON.stringify(usl_set);
         localStorage.setItem('USList', write_json); // ローカルストレージ名
 
