@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        UserScript List
 // @namespace        http://tampermonkey.net/
-// @version        1.1
+// @version        1.2
 // @description        Tampermonkey の登録スクリプトのリストを表示　ショートカット「F10」
 // @author        Personwritep
 // @match        https://*/*
@@ -19,7 +19,7 @@ if(!location.hostname.includes('example.com')){
         if(event.keyCode==121){ // ショートカット「F10」
             event.preventDefault();
             event.stopImmediatePropagation();
-            let win_apper='left=100, top=100, width=1100, height=800';
+            let win_apper='left=100, top=100, width=1104, height=800';
             window.open('https://example.com/', null , win_apper); }}}
 
 
@@ -56,7 +56,7 @@ function main(){
     let wrap_select; // 左右リストの表示「0:両方」「1:左のみ」「2:右のみ」
     let snap; // スナップスクロール「0:無効」「1:有効」
     let list_reverce; // 配列の降順表示「0:昇順」「1:降順」
-
+    let search=0; // 検索パネルの表示フラグ
 
 
     let read_json=localStorage.getItem('USList'); // ストレージ 保存名
@@ -79,6 +79,14 @@ function main(){
 
 
     function display(){
+        let help_url='https://ameblo.jp/personwritep/entry-12888168235.html';
+
+        let search_SVG=
+            '<svg viewBox="0 0 512 512" style="height: 16px; padding: 4px; fill: #666;">'+
+            '<path d="M416 208c0 46-15 88-40 123L503 457c13 13 13 33 0 45s-33 13-45 0'+
+            'L331 376c-34 25-77 40-123 40C93 416 0 323 0 208S93 0 208 0S416 93 416 20'+
+            '8zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"></path>'+
+            '</svg>';
 
         let snap_SVG=
             '<svg viewBox="0 0 530 530" style="height: 24px; fill: #00b2a5;">'+
@@ -105,7 +113,6 @@ function main(){
             ' 231 277 231L340 231z"></path>'+
             '</svg>';
 
-
         let panel=
             '<div id="panel_USL">'+
             '<div class="main_panel">'+
@@ -116,6 +123,7 @@ function main(){
             '<input class="sw1 sw" type="submit" value="File">'+
             '<input class="sw2" type="file">'+
             '<span class="fname"></span>'+
+            '<button class="sw6 sw" type="submit">'+ search_SVG +'</button>'+
             '<input class="sw3 sw" type="submit" value="Equal" '+
             'title="左右のリストを比較\n青: 一致　黄色: バージョン違い　白: 一致なし">'+
             '</div>'+
@@ -131,6 +139,9 @@ function main(){
             '<span class="fname"></span>'+
             '<button class="sw4 sw" type="submit">'+ snap_SVG +'</button>'+
             '<button class="sw5 sw" type="submit">'+ rev_SVG +'</button>'+
+            '<button class="sw7 sw" type="submit">'+
+            '<a href="'+ help_url +'" target="_blank" rel="noopener noreferrer"><b>？</b>'+
+            '</a></button>'+
             '</div>'+
             '<div class="us_list l1">'+
             '<ul></ul>'+
@@ -156,11 +167,15 @@ function main(){
             '#panel_USL .sw0 { width: 16px; margin-right: 8px; } '+
             '#panel_USL .sw1 { height: 26px; width: 38px; } '+
             '#panel_USL .sw2 { display: none; } '+
+            '#panel_USL .sw6 { position: absolute; top: 7px; right: 78px; cursor: pointer; } '+
             '#panel_USL .sw3 { position: absolute; top: 7px; right: 15px; width: 56px; } '+
-            '#panel_USL .sw4 { position: absolute; top: 7px; right: 48px; } '+
+            '#panel_USL .sw4 { position: absolute; top: 7px; right: 78px; } '+
             '#panel_USL .sw4 svg { opacity: 0.2; } '+
-            '#panel_USL .sw5 { position: absolute; top: 7px; right: 15px; } '+
-            '#panel_USL .fname { font: normal 14px/27px Meiryo; margin: 0 12px; height: 26px; } '+
+            '#panel_USL .sw5 { position: absolute; top: 7px; right: 45px; } '+
+            '#panel_USL .sw7 { position: absolute; top: 10px; right: 12px; color: #999; '+
+            'width: 21px; height: 21px; line-height: 22px; border-radius: 30px; } '+
+            '#panel_USL .sw7 a { text-decoration: none; } '+
+            '#panel_USL .fname { font: normal 15px/30px Meiryo; margin: 0 12px; height: 26px; } '+
 
             '#panel_USL .us_list { position: relative; z-index: 2; '+
             'width: 530px; height: calc(100vh - 52px); overflow-y: scroll; overflow-x: hidden; '+
@@ -305,10 +320,16 @@ function main(){
         function file_time(filename){
             if(filename){
                 let full=filename.split('T');
+                full[0]=full[0].replace('tampermonkey', 'TM');
                 let tail=full[1];
                 if(tail){
                     tail=tail.substring(0, 5);
-                    return full[0] +' T'+ tail; }}}
+                    return full[0] +'　T'+ tail; }}}
+
+
+        let sw6=document.querySelector('#panel_USL .sw6');
+        sw6.onclick=function(){
+            name_search(); }
 
 
         let sw3=document.querySelector('#panel_USL .sw3');
@@ -726,6 +747,93 @@ function main(){
         usl_set[0]=wrap_select;
         let write_json=JSON.stringify(usl_set);
         localStorage.setItem('USList', write_json); } // ローカルストレージ名
+
+
+
+
+    function name_search(){
+        let s_panel=
+            '<div id="search_panel">'+
+            'Script name: <input type="text" class="ns">'+
+            '<style>'+
+            '#search_panel * { font: normal 16px Meiryo; } '+
+            '#search_panel { position: fixed; z-index: 1; top: 5px; left: 198px; '+
+            'padding: 6px 12px; color: #fff; background: #333; } '+
+            '.ns { width: 80px; height: 20px; padding: 2px 6px 0; margin: 0 2px; } '+
+            '.ns:focus-visible { outline: 1px solid #4FC3F7; } '+
+            '</style>'+
+            '</div>';
+
+        if(search==0){
+            search=1;
+            if(!document.querySelector('#search_panel')){
+                document.body.insertAdjacentHTML('beforeend', s_panel); }
+
+            let ns=document.querySelector('.ns');
+            if(ns){
+                ns.oninput=()=>{
+                    search_do(ns); }}
+
+            document.addEventListener('keydown', function(event){
+                if(event.keyCode==27){ //「ESC」で検索終了
+                    end_name_search(); }});
+        }
+        else{
+            end_name_search(); }
+
+
+
+        function search_do(ns){
+            let ask=ns.value;
+
+            let list_l0=document.querySelector('.us_list.l0');
+            if(list_l0){
+                search_list(list_l0, ask); }
+
+            let list_l1=document.querySelector('.us_list.l1');
+            if(list_l1){
+                search_list(list_l1, ask); }
+
+
+            function search_list(list, ask){
+                let items=list.querySelectorAll('li');
+                for(let k=0; k<items.length; k++){
+                    let dn=items[k].querySelector('.dn')
+                    if(dn){
+                        if(dn.textContent.startsWith(ask)){
+                            items[k].style.display=''; }
+                        else{
+                            items[k].style.display='none'; }}
+                    else{
+                        items[k].style.display='none'; }}}
+
+        } // search_do()
+
+
+
+        function end_name_search(){
+            search=0;
+
+            let list_l0_li=document.querySelectorAll('.us_list.l0 li');
+            for(let k=0; k<list_l0_li.length; k++){
+                list_l0_li[k].style.display=''; }
+
+            let list_l0=document.querySelector('.us_list.l0');
+            if(list_l0){
+                list_l0.scrollTop=0; }
+
+            let list_l1_li=document.querySelectorAll('.us_list.l1 li');
+            for(let k=0; k<list_l1_li.length; k++){
+                list_l1_li[k].style.display=''; }
+
+            let list_l1=document.querySelector('.us_list.l1');
+            if(list_l1){
+                list_l1.scrollTop=0; }
+
+            if(document.querySelector('#search_panel')){
+                document.querySelector('#search_panel').remove(); }}
+
+    } // name_search()
 
 
 } // main()
