@@ -5,6 +5,4 @@
 <br>
 
 「UserScript List」の仕様や扱い方については、以下のマニュアルを参照ください。<br>
-<br>
-
 https://ameblo.jp/personwritep/entry-12888168235.html
