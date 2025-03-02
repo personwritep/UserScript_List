@@ -18,7 +18,7 @@ let get=[]; // リストディスプレイ用の配列
 let list0=[]; // 左リスト0 のデータ保持配列
 let list1=[]; // 右リスト1 のデータ保持配列
 let snap=1; // スナップスクロール「0:無効」「1:有効」
-let list_reverce=0; // 配列の降順表示「0: 昇順」「1:降順」
+let list_reverse=0; // 配列の降順表示「0: 昇順」「1:降順」
 
 
 display();
@@ -274,12 +274,12 @@ function extract_data(n, dat){
 
     if(n==0){
         if(list0.length>0){
-            if(list_reverce==1){
+            if(list_reverse==1){
                 list0.reverse(); }
             disp_list(0); }}
     else if(n==1){
         if(list1.length>0){
-            if(list_reverce==1){
+            if(list_reverse==1){
                 list1.reverse(); }
             disp_list(1); }}
 
@@ -289,11 +289,11 @@ function extract_data(n, dat){
 
 
 function nor_rev(){
-    if(list_reverce==0){
-        list_reverce=1;
+    if(list_reverse==0){
+        list_reverse=1;
         sort_reverse(); } // 降順
     else{
-        list_reverce=0;
+        list_reverse=0;
         sort_normal(); } // 昇順
 
 
