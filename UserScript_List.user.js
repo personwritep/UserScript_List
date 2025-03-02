@@ -771,6 +771,7 @@ function main(){
 
             let ns=document.querySelector('.ns');
             if(ns){
+                ns.focus();
                 ns.oninput=()=>{
                     search_do(ns); }}
 
