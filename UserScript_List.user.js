@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        UserScript List
 // @namespace        http://tampermonkey.net/
-// @version        1.2
+// @version        1.3
 // @description        Tampermonkey の登録スクリプトのリストを表示　ショートカット「F10」
 // @author        Personwritep
 // @match        https://*/*
@@ -542,16 +542,19 @@ function main(){
     function compare(){
         mark_reset();
 
+
+        // 左リスト（検証側）：右リスト（基準側）に name version が一致する行が有るか調べる
+
         let vv0=[];
         for(let k=0; k<list1.length; k++){
             let name=list1[k][2];
             let result0_nvv=list0.filter( function(elem){
-                return elem[2]==name; }); // name一致
+                return elem[2]==name; }); // name 一致
 
             for(let r=0; r<result0_nvv.length; r++){
-                vv0.push(result0_nvv[r][0]); }} // name一致 の position 総計
+                vv0.push(result0_nvv[r][0]); }} // name が一致する position 配列
 
-        let new_vv0=Array.from(new Set(vv0)); // 重複を整理
+        let new_vv0=Array.from(new Set(vv0)); // 重複整理
 
 
         let v0=[];
@@ -559,28 +562,30 @@ function main(){
             let name=list1[k][2];
             let version=list1[k][3];
             let result0_nv=list0.filter( function(elem){
-                return elem[2]==name && elem[3]==version; }); // name・version一致
+                return elem[2]==name && elem[3]==version; }); // name・version 一致
 
             for(let r=0; r<result0_nv.length; r++){
-                v0.push(result0_nv[r][0]); }} // name・version一致 の position 総計
+                v0.push(result0_nv[r][0]); }} // name・version が一致する position 配列
 
-        let new_v0=Array.from(new Set(v0)); // 重複を整理　name・version一致 の position 配列
+        let new_v0=Array.from(new Set(v0)); // 重複整理 name・version が一致する position 配列
         new_vv0=new_vv0.filter(i=>new_v0.indexOf(i)==-1); // version違いの position 配列
 
         mark0(new_v0, '#e1f5fe'); // 一致の配色 🟠
         mark0(new_vv0, '#fef7ec'); // バージョン違いの配色 🟠
 
 
+        // 右リスト（基準側）：左リスト（検証側）に name version が一致する行が有るか調べる
+
         let vv1=[];
         for(let k=0; k<list0.length; k++){
             let name=list0[k][2];
             let result1_nvv=list1.filter( function(elem){
-                return elem[2]==name; }); // name一致
+                return elem[2]==name; }); // name 一致
 
             for(let r=0; r<result1_nvv.length; r++){
-                vv1.push(result1_nvv[r][0]); }} // name一致 の position 総計
+                vv1.push(result1_nvv[r][0]); }} // name が一致する position 配列
 
-        let new_vv1=Array.from(new Set(vv1)); // 重複を整理
+        let new_vv1=Array.from(new Set(vv1)); // 重複整理
 
 
         let v1=[];
@@ -588,16 +593,33 @@ function main(){
             let name=list0[k][2];
             let version=list0[k][3];
             let result1_nv=list1.filter( function(elem){
-                return elem[2]==name && elem[3]==version; }); // name・version一致
+                return elem[2]==name && elem[3]==version; }); // name・version 一致
 
             for(let r=0; r<result1_nv.length; r++){
-                v1.push(result1_nv[r][0]); }} // name・version一致 の position 総計
+                v1.push(result1_nv[r][0]); }} // name・version が一致する position 配列
 
-        let new_v1=Array.from(new Set(v1)); // 重複を整理　name・version一致 の position 配列
+        let new_v1=Array.from(new Set(v1)); // 重複整理 name・version が一致する position 配列
         new_vv1=new_vv1.filter(i=>new_v1.indexOf(i)==-1); // version違いの position 配列
 
         mark1(new_v1, '#e1f5fe'); // 一致の配色 🟠
         mark1(new_vv1, '#fef7ec'); // バージョン違いの配色 🟠
+
+
+        // 左リスト（検証側）：右リスト（基準側）に name が一致し position が異なる行の有無を調べる
+
+        let v2=[];
+        for(let k=0; k<list1.length; k++){
+            let position=list1[k][0]
+            let name=list1[k][2];
+            let result2_nv=list0.filter( function(elem){
+                return elem[0]!=position && elem[2]==name; }); // name 一致 positionが不一致
+
+            for(let r=0; r<result2_nv.length; r++){
+                v2.push(result2_nv[r][0]); }} // name 一致 position 不一致の position 配列
+
+        let new_v2=Array.from(new Set(v2)); // 重複整理 name 一致 position 不一致の position 配列
+
+        mark2(new_v2); // name 一致 position 不一致の配色 🟠
 
     } // compare()
 
@@ -607,6 +629,11 @@ function main(){
         let items0=document.querySelectorAll('.us_list.l0 li');
         for(let k=0; k<items0.length; k++){
             items0[k].style.background='#fff'; }
+
+        let items0_dp=document.querySelectorAll('.us_list.l0 li .dp');
+        for(let k=0; k<items0_dp.length; k++){
+            items0_dp[k].style.fontWeight='';
+            items0_dp[k].style.color=''; }
 
         let items1=document.querySelectorAll('.us_list.l1 li');
         for(let k=0; k<items1.length; k++){
@@ -629,6 +656,13 @@ function main(){
                 items1[k].style.background=color; }}}
 
 
+    function mark2(new_list){
+        let items0=document.querySelectorAll('.us_list.l0 li');
+        for(let k=0; k<items0.length; k++){
+            let dp=items0[k].querySelector('.dp').textContent/1;
+            if(new_list.includes(dp)){
+                items0[k].querySelector('.dp').style.fontWeight='bold';
+                items0[k].querySelector('.dp').style.color='red'; }}}
 
 
     function snap_set(n){
