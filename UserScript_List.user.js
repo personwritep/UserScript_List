@@ -189,8 +189,11 @@ function main(){
             '#panel_USL .de { width: 45px; text-align: left; } '+
             '#panel_USL .dn { width: 300px; white-space: nowrap; } '+
             '#panel_USL .dv { width: 80px; padding: 0 6px; margin: 0 -20px 2px 15px; } '+
-            '.far { height: 17px; margin: 0 0 -5px; } '+
-            'svg { display: block; margin: 0; opacity: 1; } '+
+
+            'body > P, body > svg, body>a { display: none; } '+
+            'svg { display: revert; margin: 0; opacity: 1; } '+
+
+            '.far { height: 17px; margin: 0 0 -4px; } '+
             '</style>'+
 
             '<style class="snap_style">'+
