@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        UserScript List
 // @namespace        http://tampermonkey.net/
-// @version        1.3
+// @version        1.4
 // @description        Tampermonkey の登録スクリプトのリストを表示　ショートカット「F10」
 // @author        Personwritep
 // @match        https://*/*
@@ -189,7 +189,8 @@ function main(){
             '#panel_USL .de { width: 45px; text-align: left; } '+
             '#panel_USL .dn { width: 300px; white-space: nowrap; } '+
             '#panel_USL .dv { width: 80px; padding: 0 6px; margin: 0 -20px 2px 15px; } '+
-            '.far { height: 17px; vertical-align: -3px; } '+
+            '.far { height: 17px; margin: 0 0 -5px; } '+
+            'svg { display: block; margin: 0; opacity: 1; } '+
             '</style>'+
 
             '<style class="snap_style">'+
